@@ -50,7 +50,7 @@ function solvecubic(a::Real, b::Real, c::Real, d::Real)
     end
 
     if a == zero(typeof(a))
-        return Base.error("Can't solve. a=0 in a*x³ + b*x² + c*x + d =0")
+        return Base.error("Can't solve when a=0 in a*x³ + b*x² + c*x + d =0")
     end
     f = (3c/a - (b/a)^2) / 3
     g = (2(b/a)^3 - (9*b*c/a^2) + 27d/a) / 27
@@ -72,13 +72,13 @@ end
 ηₜ(T::AbstractFloat) = 1.0020*10^((1.1709*(20-T)-0.001827*(T-20)^2)/(T+89.93)-3)
 
 #Saturation Vapor Pressure (Pa) at T degree celsius
-#Equation 21 to Alduchov and Eskridge (1996)
+#Equation 21 in Alduchov and Eskridge (1996)
 SVPₜ(T::AbstractFloat) = 610.94*exp(17.625*T/(243.04+T))
 
 #Vapour-pressure deficit (Pa) at T degree celsius and RH relative humidity (%)
 VPDₜ(T::AbstractFloat,RH::AbstractFloat) = SVPₜ(T)*(1-RH/100)
 
-#Calcualte day light hours
+#Calcualte day-light hours
 function daylighthour(L::Real,d::Real)
     #Jenkins, 2013, The Sun's position in the sky
     #L = latitude (rad)

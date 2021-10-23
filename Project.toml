@@ -3,6 +3,9 @@ uuid = "ca5d910d-a1e0-446f-8378-e1f3d5b528ad"
 authors = ["Peter Fransson"]
 version = "0.1.0"
 
+[deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+
 [compat]
 julia = "1"
 
