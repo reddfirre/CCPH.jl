@@ -1,5 +1,5 @@
 #Function for calcualting Jmax from Nitrogen per leaf area (Nₐ)
-function Calc_Jmax(Nₐ::T,a::T,b::T) where {T<:Float64}    
+function Calc_Jmax(Nₐ::T,a::T,b::T) where {T<:Float64}     
     return max(a*Nₐ+b,0.0)
 end
 

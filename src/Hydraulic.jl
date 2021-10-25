@@ -43,7 +43,7 @@ end
 
 #Calculate canopy conductance
 function Calc_K_cost(gₛ::T,model::CCPHStruct;limit_up::T=1.0,limit_lo::T=0.12) where {T<:Float64}
-    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.θ
+    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.θₛ
 
     #Calculate tree height
     H = model.treesize.H
