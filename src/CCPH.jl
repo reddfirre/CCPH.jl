@@ -1,9 +1,10 @@
 module CCPH
 #Import packages
-import Dates
+import Dates, Optim
 
 export Constants, EnvironmentStruct, PhotoKineticRates, PhotoPar, PhotoPar!,
-TreeSize, TreePar, HydraulicsPar, CCPHStruct, CCPHOutput, CCPHTS, WeatherTS, Simple_CCPH
+TreeSize, TreePar, HydraulicsPar, CCPHStruct, CCPHOutput, CCPHTS, WeatherTS, CCPH_run,
+CCPHTraitmodel
 
 #include external files
 include("Auxiliary.jl")

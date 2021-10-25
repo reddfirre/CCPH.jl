@@ -72,7 +72,8 @@ function Gain_fun(αr::T,K_cost::T,Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,P::T,model::CCP
     return (NPP-Gr)*K_cost^model.hydPar.i
 end
 
-function Simple_CCPH(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where {T<:Float64}    
+#Run the Coupled Canopy Photosynthesis and Hydraulics model
+function CCPH_run(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where {T<:Float64}    
     #Calculate per sapwood mass nitrogen concentration
     Nₘ_w = model.treepar.rW*Nₘ_f
     #Calcualte per fine roots mass nitrogen concentration
@@ -85,7 +86,7 @@ function Simple_CCPH(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where 
     Iᵢ = Calc_Iᵢ(model.env.I₀,model)
     #Calculate LAI 
     LAI = Calc_LAI(model)
-    #calcualte totel conductance
+    #calcualte total conductance
     gₜ = gₛ*model.treepar.r_gₛ
     #Calculate per tree carbon assimilation
     P = GPP(gₜ,Iᵢ,Jmax,LAI,growthlength,model)   
@@ -104,4 +105,35 @@ function Simple_CCPH(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where 
     modeloutput = CCPHOutput(P,αr_val,ψ_c,Kₓₗ,K_cost,maximum(Gain_vec))
 
     return modeloutput
+end
+
+function Trait_objective_fun(x::Array{T,1},growthlength::T,model::CCPHStruct) where {T<:Float64} 
+    gₛ,Nₘ_f = x
+
+    modeloutput = CCPH_run(gₛ,Nₘ_f,growthlength,model)
+
+    return -modeloutput.Gain
+end 
+
+#Find optimal triats
+function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
+    gₛ_guess::T=0.05,Nₘ_f_guess::T=0.012,gₛ_lim_lo::T=0.01,gₛ_lim_hi::T=0.5,
+    Nₘ_f_lim_lo::T=0.007,Nₘ_f_lim_hi::T=0.05) where {T<:Float64}      
+  
+    x0 = [gₛ_guess, Nₘ_f_guess]    
+  
+    lower = [gₛ_lim_lo, Nₘ_f_lim_lo]   
+    upper = [gₛ_lim_hi, Nₘ_f_lim_hi]
+  
+    inner_optimizer = Optim.BFGS(linesearch=Optim.LineSearches.BackTracking())   
+    
+    opt_trait = Optim.optimize(x->Trait_objective_fun(x,growthlength,model),
+    lower,upper,x0,Optim.Fminbox(inner_optimizer))
+  
+    Optim.converged(opt_trait)||error("No optimal traits could be found")
+    
+    gₛ_opt = opt_trait.minimizer[1]
+    Nₘ_f_opt = opt_trait.minimizer[2]
+  
+    return gₛ_opt,Nₘ_f_opt
 end

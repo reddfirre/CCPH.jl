@@ -17,30 +17,6 @@ function Re_Kₛᵣfun(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,p::T=4.66) wh
     return Sₑ^p
 end
 
-function Calc_K_costᵢₙᵥ(Pval::Float64,model::CCPHStruct)
-    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.θ
-
-    #Calc target ψ
-    ψ_target = Pfunᵢₙᵥ(Pval,ψ₅₀,b)
-    #Calc taget Kₓₗ
-    Kₓₗ = Kₓₗ₀*Pval
-    #Calculate tree height
-    H = model.treesize.H    
-    #Caluclate soil water potential
-    ψₛ = θₛ2ψₛ(θₛ)
-    #Calcualate soil conductance
-    re_Kₛᵣ = Re_Kₛᵣfun(θₛ)    
-    Kₛᵣ =   model.hydPar.Kₛᵣ₀*re_Kₛᵣ  
-    #Soil water potential adjusted for gravitational pressure (MPa)
-    ψₛ_g = ψₛ-H*ρ_H2O*g*10^-6     
-    #Calculate target E
-    E_target = -(ψ_target-ψₛ_g)*(2*Kₓₗ*Kₛᵣ)/(2*Kₓₗ+Kₛᵣ)
-    #Calcualte target gₛ
-    gₛ_target = E_target*model.env.P/(1.6*model.env.VPD)
-
-    return gₛ_target
-end
-
 #Calculate canopy conductance
 function Calc_K_cost(gₛ::T,model::CCPHStruct;limit_up::T=1.0,limit_lo::T=0.12) where {T<:Float64}
     ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.θₛ
@@ -67,4 +43,29 @@ function Calc_K_cost(gₛ::T,model::CCPHStruct;limit_up::T=1.0,limit_lo::T=0.12)
     catch
         error("Could not find a feasable canopy conductance")
     end    
+end
+
+#Calculate stomatal (gₛ) for a given K_cost (Pval)
+function Calc_K_costᵢₙᵥ(Pval::Float64,model::CCPHStruct)
+    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.θ
+
+    #Calc target ψ
+    ψ_target = Pfunᵢₙᵥ(Pval,ψ₅₀,b)
+    #Calc taget Kₓₗ
+    Kₓₗ = Kₓₗ₀*Pval
+    #Calculate tree height
+    H = model.treesize.H    
+    #Caluclate soil water potential
+    ψₛ = θₛ2ψₛ(θₛ)
+    #Calcualate soil conductance
+    re_Kₛᵣ = Re_Kₛᵣfun(θₛ)    
+    Kₛᵣ =   model.hydPar.Kₛᵣ₀*re_Kₛᵣ  
+    #Soil water potential adjusted for gravitational pressure (MPa)
+    ψₛ_g = ψₛ-H*ρ_H2O*g*10^-6     
+    #Calculate target E
+    E_target = -(ψ_target-ψₛ_g)*(2*Kₓₗ*Kₛᵣ)/(2*Kₓₗ+Kₛᵣ)
+    #Calcualte target gₛ
+    gₛ_target = E_target*model.env.P/(1.6*model.env.VPD)
+
+    return gₛ_target
 end
