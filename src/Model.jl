@@ -1,6 +1,6 @@
 #Function for calcualting Jmax from Nitrogen per leaf area (Nₐ)
-function Calc_Jmax(Nₐ::T,a::T,b::T) where {T<:Float64}     
-    return max(a*Nₐ+b,0.0)
+function Calc_Jmax(Nₐ::T,a::T,b::T,b_Jmax::T) where {T<:Float64}     
+    return max(b_Jmax*(a*Nₐ+b),0.0)
 end
 
 Calc_LAI(model::CCPHStruct) = model.treesize.Wf/model.treepar.LMA*model.treesize.N
@@ -109,7 +109,7 @@ function CCPH_run(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where {T<
     #Calcualte per leaf area nitrogen concentration    
     Nₐ = Calc_Nₐ(Nₘ_f,model)
     #Calculate Jmax
-    Jmax = Calc_Jmax(Nₐ,model.treepar.a_Jmax,model.treepar.b_Jmax)
+    Jmax = Calc_Jmax(Nₐ,model.treepar.a_Jmax,model.treepar.b_Jmax,model.photopar.b_Jmax)
     #Irradiance incident on a leaf at canopy top
     Iᵢ = Calc_Iᵢ(model.env.I₀,model)
     #Calculate LAI 
@@ -173,7 +173,7 @@ function TreeStandDyn!(dy::Array{T,1},y::Array{T,1},model::CCPHStruct,t::T,growt
     #Calcualte per leaf area nitrogen concentration    
     Nₐ = Calc_Nₐ(Nₘ_f,model)
     #Calculate Jmax
-    Jmax = Calc_Jmax(Nₐ,model.treepar.a_Jmax,model.treepar.b_Jmax)
+    Jmax = Calc_Jmax(Nₐ,model.treepar.a_Jmax,model.treepar.b_Jmax,model.photopar.b_Jmax)
     #Irradiance incident on a leaf at canopy top
     Iᵢ = Calc_Iᵢ(model.env.I₀,model)
     #Calculate LAI 
@@ -223,4 +223,65 @@ function TreeStandDyn!(dy::Array{T,1},y::Array{T,1},model::CCPHStruct,t::T,growt
     dy[6] = dB
     dy[7] = dN
     dy[8] = dWr
+end
+
+#initiate weather parameters from WeatherTS
+function Init_weather_par!(i::Integer,weatherts::WeatherTS,photo_kinetic::PhotoKineticRates) 
+    growthlength = tot_daylight_hour_ts[i] #Length of day light time during the gorwth period of a specific year (s)
+    step_length = weatherts.daylight[i]/tot_daylight_hour_ts[i] #length of simulation step (proportion of a year)
+    model.env.I₀ = weatherts.PAR[i] 
+    model.env.VPD = weatherts.VPD[i]  
+    model.ccphpar.θₛ = weatherts.θₛ[i]         
+    PhotoPar!(model.photopar,photo_kinetic,weatherts.temp[i])
+    model.treepar.Xₜ = weatherts.acclimation_fac[i] #Account for acclimation 
+
+    return growthlength,step_length
+end
+
+#Simulate growth with weather time series
+function CCPHStandGrowth!(model::CCPHStruct,weatherts::WeatherTS,
+    tot_daylight_hour_ts::Array{T,1},nstep::Integer)::CCPHTS where {T<:Float64}  
+    
+    CCPHTS = CCPHTS() #Init Time series struct
+    CCPHTS!(CCPHTS,model.treesize)      
+       
+    for i in 1:nstep  
+                      
+        #initiate weather parameters         
+
+
+        gₛ_crit = calc_gₛ_crit(model)       
+      
+        gₛ_opt,Nₘ_f_opt = SimpleCCPHTraitmodel(growthlength,model;gₛ_guess=gₛ_opt,Nₘ_f_guess=Nₘ_f_opt,gₛ_upper=gₛ_crit)
+          
+        modeloutput = CCPH_run(gₛ_opt,Nₘ_f_opt,growthlength,model)    
+      
+        CCPHTS!(CCPHTS,modeloutput,gₛ_opt,Nₘ_f_opt,gₛ_crit)         
+  
+        y0 = [model.treesize.Wf,model.treesize.Ww,model.treesize.H,
+        model.treesize.Hs,model.treesize.As,model.treesize.B,model.treesize.N,modeloutput.αr*model.treesize.As]        
+        
+        #Simulate one timestep
+        prob = ODEProblem((dy::Array{Float64,1},y::Array{Float64,1},P_in::SimpleCCPHStruct,t::Float64)->
+        TreeStandDyn!(dy,y,P_in,t,growthlength,gₛ_opt,Nₘ_f_opt,modeloutput.αr),y0,(0.0,step_length),model)
+        sol = DifferentialEquations.solve(prob)     
+  
+        #Update current size        
+        model.treesize.Wf,model.treesize.Ww,model.treesize.H,
+        model.treesize.Hs,model.treesize.As,model.treesize.B,model.treesize.N,Wr = sol(step_length)          
+  
+        #Update time series
+        CCPHTS!(CCPHTS,model.treesize)         
+    end    
+
+    #initiate weather parameters
+    gₛ_crit = calc_gₛ_crit(model)
+    
+    gₛ_opt,Nₘ_f_opt = SimpleCCPHTraitmodel(growthlength,model;gₛ_guess=gₛ_opt,Nₘ_f_guess=Nₘ_f_opt,gₛ_upper=gₛ_crit)    
+    
+    modeloutput = Simple_CCPH(gₛ_opt,Nₘ_f_opt,growthlength,model)        
+    
+    SimpleCCPHTS!(CCPHTS,modeloutput,gₛ_opt,Nₘ_f_opt,gₛ_crit)
+
+    return CCPHTS
 end
