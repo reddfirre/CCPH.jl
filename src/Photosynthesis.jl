@@ -17,6 +17,22 @@ function Farquhar(gₜ::T, Iᵢ::T, Jₘₐₓ::T,photo::PhotoPar,env::Environme
     return A, cᵢ
 end
 
+#Calculate the C assimilation (kg C year⁻¹ m⁻² leaf area)
+function C_assimilation(gₜ::T,Iᵢ::T,Jmax::T,growthlength::T,model::CCPHStruct) where {T<:Float64}
+    A = model.treepar.Xₜ*model.cons.M_C*Farquhar(gₜ,Iᵢ,Jmax,model.photopar,model.env)[1]*growthlength
+
+    return A
+end
+
 #Calculate per tree canopy gross primary production
-GPP(gₜ::T,Iᵢ::T,Jmax::T,LAI::T,growthlength::T,model::CCPHStruct) where {T<:Float64} = model.cons.M_C*Farquhar(gₜ,Iᵢ,Jmax,model.photopar,model.env)[1]*
-    growthlength*(1-exp(-model.treepar.k*LAI))/(model.treesize.N*model.treepar.k)
+GPP(gₜ::T,Iᵢ::T,Jmax::T,LAI::T,growthlength::T,model::CCPHStruct) where {T<:Float64} = 
+C_assimilation(gₜ,Iᵢ,Jmax,growthlength,model)*(1-exp(-model.treepar.k*LAI))/(model.treesize.N*model.treepar.k)
+
+#Calcualte leaf performance at crown base
+function Calc_Δ_leaf(gₜ::T,Iᵢ::T,LAI::T,growthlength::T,Nₘ_f::T,Jmax::T,model::CCPHStruct) where {T<:Float64} 
+    Iᵢ_b = Iᵢ*exp(-model.treepar.k*LAI)
+    Jmax_b = Jmax*exp(-model.treepar.k*LAI)
+    A_b = C_assimilation(gₜ,Iᵢ_b,Jmax_b,growthlength,model)  
+    Δ_leaf = model.treepar.y*(A_b-model.treepar.rₘ*Nₘ_f*model.treepar.LMA)-model.treepar.LMA/model.treepar.Tf #Bottom leaf performance
+    return Δ_leaf
+end

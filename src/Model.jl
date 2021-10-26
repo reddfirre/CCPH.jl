@@ -11,12 +11,12 @@ Calc_Iᵢ(I::Float64,model::CCPHStruct) = I*model.treepar.k/(1-model.treepar.m)
 #calcualte total conductance
 Calc_gₜ(gₛ::Float64,model::CCPHStruct) = gₛ*model.treepar.r_gₛ
 
- #Calculate per sapwood mass nitrogen concentration
- Calc_Nₘ_w(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.rW*Nₘ_f
- #Calcualte per fine roots mass nitrogen concentration
- Calc_Nₘ_r(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.rR*Nₘ_f      
- #Calcualte per leaf area nitrogen concentration
- Calc_Nₐ(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.LMA*Nₘ_f
+#Calculate per sapwood mass nitrogen concentration
+Calc_Nₘ_w(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.rW*Nₘ_f
+#Calcualte per fine roots mass nitrogen concentration
+Calc_Nₘ_r(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.rR*Nₘ_f      
+#Calcualte per leaf area nitrogen concentration
+Calc_Nₐ(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.LMA*Nₘ_f
 
 #Calculate total maintenance respiration
 function Calc_Rₘ(Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,Wf::T,Ww::T,Wr::T,model::CCPHStruct) where {T<:Float64}
@@ -37,15 +37,6 @@ function Calc_dH(NPP::T,S::T,Wf::T,Ww::T,Wr::T,H::T,Hs::T,model::CCPHStruct) whe
     model.treepar.z*Wr/(H-Hs))
 
     return dH
-end
-
-#Calcualte leaf performance at crown base
-function Calc_Δ_leaf(gₜ::T,Iᵢ::T,LAI::T,growthlength::T,Nₘ_f::T,Jmax::T,model::CCPHStruct) where {T<:Float64} 
-    Iᵢ_b = Iᵢ*exp(-model.treepar.k*LAI)
-    Jmax_b = Jmax*exp(-model.treepar.k*LAI)
-    A_b = Farquhar(gₜ,Iᵢ_b,Jmax_b,model.photopar,model.env)[1]    
-    Δ_leaf = model.treepar.y*(model.cons.M_C*A_b*growthlength-model.treepar.rₘ*Nₘ_f*model.treepar.LMA)-model.treepar.LMA/model.treepar.Tf #Bottom leaf performance
-    return Δ_leaf
 end
 
 #Function for calcualting fine root to sapwood area ratio based on carbon and nitrogen constraints

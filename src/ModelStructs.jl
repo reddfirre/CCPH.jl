@@ -146,12 +146,13 @@ mutable struct TreePar{T<:Float64}
     rW::T #Sapwood to foliage nitrogen concentration (mass) (-) 
     rR::T #Fine root to foliage nitrogen concentration (mass) (-) 
     r_gₛ::T #total leaf conductance (stomatal+mesophyll) to stomatal conductance (gₜ/gₛ)
+    Xₜ::T #Factor [0,1] accounting for the delayed effect of temperature on gross primary production (-) 
 end
 #Standard values
 TreePar(;αf::T=460.0,ρw::T=400.0,β₁::T=1.27,β₂::T=-0.27,Tf::T=3.33,Tr::T=1.25,y::T=1.54,z::T=1.86,
 Nₛ::T=0.04,rₘ::T=24.0,k::T=0.52,m::T=0.05,a_Jmax::T=0.033,b_Jmax::T=-1.1e-5,LMA::T=0.256
-,Kr::T = 0.35,rW::T = 0.07,rR::T = 0.6,r_gₛ::T = 0.42) where {T<:Float64}  = 
-TreePar(αf,ρw,β₁,β₂,Tf,Tr,y,z,Nₛ,rₘ,k,m,a_Jmax,b_Jmax,LMA,Kr,rW,rR,r_gₛ)
+,Kr::T = 0.35,rW::T = 0.07,rR::T = 0.6,r_gₛ::T = 0.42,Xₜ::T = 1.0) where {T<:Float64}  = 
+TreePar(αf,ρw,β₁,β₂,Tf,Tr,y,z,Nₛ,rₘ,k,m,a_Jmax,b_Jmax,LMA,Kr,rW,rR,r_gₛ,Xₜ)
 
 #Parameteres used in the Hydraulics model
 mutable struct HydraulicsPar{T<:Float64}
