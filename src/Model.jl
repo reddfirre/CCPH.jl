@@ -8,11 +8,42 @@ Calc_LAI(model::CCPHStruct) = model.treesize.Wf/model.treepar.LMA*model.treesize
 #Calculate the irradiance incident on a leaf at irradiance I
 Calc_Iᵢ(I::Float64,model::CCPHStruct) = I*model.treepar.k/(1-model.treepar.m)
 
+#calcualte total conductance
+Calc_gₜ(gₛ::Float64,model::CCPHStruct) = gₛ*model.treepar.r_gₛ
+
+ #Calculate per sapwood mass nitrogen concentration
+ Calc_Nₘ_w(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.rW*Nₘ_f
+ #Calcualte per fine roots mass nitrogen concentration
+ Calc_Nₘ_r(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.rR*Nₘ_f      
+ #Calcualte per leaf area nitrogen concentration
+ Calc_Nₐ(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.LMA*Nₘ_f
+
+#Calculate total maintenance respiration
+function Calc_Rₘ(Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,Wf::T,Ww::T,Wr::T,model::CCPHStruct) where {T<:Float64}
+    Rₘ = model.treepar.rₘ*(Nₘ_f*Wf+Nₘ_w*Ww+Nₘ_r*Wr)
+    return Rₘ
+end
+
+Calc_NPP(P::T,Rₘ::T,model::CCPHStruct) where {T<:Float64} = model.treepar.y*(P-Rₘ)
+
+#Foliage and fine root time depednent senescence
+Calc_S_fr(Wf::T,Wr::T,model::CCPHStruct) where {T<:Float64} = Wf/model.treepar.Tf+Wr/model.treepar.Tr
+
+#Tree height time derivative
+function Calc_dH(NPP::T,S::T,Wf::T,Ww::T,Wr::T,H::T,Hs::T,model::CCPHStruct) where {T<:Float64}
+    dH = (NPP-S)/( model.treepar.β₁*Ww/(model.treepar.β₁*H+model.treepar.β₂*Hs)+
+    model.treepar.z*Wf/(H-Hs)+
+    model.treepar.z*Ww/(H-Hs)+
+    model.treepar.z*Wr/(H-Hs))
+
+    return dH
+end
+
 #Calcualte leaf performance at crown base
-function Calc_Δ_leaf(gₛ::T,Iᵢ::T,LAI::T,Nₘ_f::T,Jmax::T,model::CCPHStruct) where {T<:Float64} 
+function Calc_Δ_leaf(gₜ::T,Iᵢ::T,LAI::T,growthlength::T,Nₘ_f::T,Jmax::T,model::CCPHStruct) where {T<:Float64} 
     Iᵢ_b = Iᵢ*exp(-model.treepar.k*LAI)
     Jmax_b = Jmax*exp(-model.treepar.k*LAI)
-    A_b = Farquhar(gₛ*model.treepar.rg,Iᵢ_b,Jmax_b,model.photopar,model.env)[1]    
+    A_b = Farquhar(gₜ,Iᵢ_b,Jmax_b,model.photopar,model.env)[1]    
     Δ_leaf = model.treepar.y*(model.cons.M_C*A_b*growthlength-model.treepar.rₘ*Nₘ_f*model.treepar.LMA)-model.treepar.LMA/model.treepar.Tf #Bottom leaf performance
     return Δ_leaf
 end
@@ -60,20 +91,17 @@ function Gain_fun(αr::T,K_cost::T,Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,P::T,model::CCP
     #Fine root mass
     Wr = model.treesize.As*αr
     
-    #Calculate total maintenance respiration
-    R_m = model.treepar.rₘ*(Nₘ_f*model.treesize.Wf+Nₘ_w*model.treesize.Ww+Nₘ_r*Wr)
+    #Calculate total maintenance respiration    
+    R_m = Calc_Rₘ(Nₘ_f,Nₘ_w,Nₘ_r,model.treesize.Wf,model.treesize.Ww,Wr,model)
 
-    #Net primary production
-    NPP = model.treepar.y*(P-R_m)
+    #Net primary production   
+    NPP = Calc_NPP(P,R_m,model)
 
-    #Foliage and fine root time depednent senescence
-    S = model.treesize.Wf/model.treepar.Tf+Wr/model.treepar.Tr
+    #Foliage and fine root time depednent senescence    
+    S = Calc_S_fr(model.treesize.Wf,Wr,model)
 
     #Tree height time derivative
-    dH = (NPP-S)/( model.treepar.β₁*model.treesize.Ww/(model.treepar.β₁*model.treesize.H+model.treepar.β₂*model.treesize.Hs)+
-    model.treepar.z*model.treesize.Wf/(model.treesize.H-model.treesize.Hs)+
-    model.treepar.z*model.treesize.Ww/(model.treesize.H-model.treesize.Hs)+
-    model.treepar.z*Wr/(model.treesize.H-model.treesize.Hs))
+    dH = Calc_dH(NPP,S,model.treesize.Wf,model.treesize.Ww,Wr,model.treesize.H,model.treesize.Hs,model)
 
     #Fine root growth
     Gr = model.treepar.z*Wr/(model.treesize.H-model.treesize.Hs)*dH+Wr/model.treepar.Tr
@@ -83,12 +111,12 @@ end
 
 #Run the Coupled Canopy Photosynthesis and Hydraulics model
 function CCPH_run(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where {T<:Float64}    
-    #Calculate per sapwood mass nitrogen concentration
-    Nₘ_w = model.treepar.rW*Nₘ_f
-    #Calcualte per fine roots mass nitrogen concentration
-    Nₘ_r = model.treepar.rR*Nₘ_f      
-    #Calcualte per leaf area nitrogen concentration
-    Nₐ = model.treepar.LMA*Nₘ_f
+    #Calculate per sapwood mass nitrogen concentration    
+    Nₘ_w = Calc_Nₘ_w(Nₘ_f,model)
+    #Calcualte per fine roots mass nitrogen concentration       
+    Nₘ_r = Calc_Nₘ_r(Nₘ_f,model)
+    #Calcualte per leaf area nitrogen concentration    
+    Nₐ = Calc_Nₐ(Nₘ_f,model)
     #Calculate Jmax
     Jmax = Calc_Jmax(Nₐ,model.treepar.a_Jmax,model.treepar.b_Jmax)
     #Irradiance incident on a leaf at canopy top
@@ -96,7 +124,7 @@ function CCPH_run(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where {T<
     #Calculate LAI 
     LAI = Calc_LAI(model)
     #calcualte total conductance
-    gₜ = gₛ*model.treepar.r_gₛ
+    gₜ = Calc_gₜ(gₛ,model)
     #Calculate per tree carbon assimilation
     P = GPP(gₜ,Iᵢ,Jmax,LAI,growthlength,model)   
     #---Calculate cost factor of hydraulic failure---  
@@ -151,37 +179,40 @@ end
 function TreeStandDyn!(dy::Array{T,1},y::Array{T,1},model::CCPHStruct,t::T,growthlength::T,gₛ::T,Nₘ_f::T,αr::T) where {T<:Float64}  
     Wf,Ww,H,Hs,As,B,N,Wr = y
 
-    #Calcualte per leaf area nitrogen concentration
-    Nₐ = model.treepar.LMA*Nₘ_f
+    #Calcualte per leaf area nitrogen concentration    
+    Nₐ = Calc_Nₐ(Nₘ_f,model)
     #Calculate Jmax
-    Jmax = calc_Jmax(Nₐ,model.treepar.a_Jmax,model.treepar.b_Jmax)
+    Jmax = Calc_Jmax(Nₐ,model.treepar.a_Jmax,model.treepar.b_Jmax)
     #Irradiance incident on a leaf at canopy top
     Iᵢ = Calc_Iᵢ(model.env.I₀,model)
     #Calculate LAI 
     LAI = Calc_LAI(model)
+    #calcualte total conductance
+    gₜ = Calc_gₜ(gₛ,model)
     #Calculate GPP
-    P = GPP(gₛ,Iᵢ,Jmax,LAI,growthlength,model)
+    P = GPP(gₜ,Iᵢ,Jmax,LAI,growthlength,model)   
+
+    #Calculate per sapwood mass nitrogen concentration    
+    Nₘ_w = Calc_Nₘ_w(Nₘ_f,model)
+    #Calcualte per fine roots mass nitrogen concentration       
+    Nₘ_r = Calc_Nₘ_r(Nₘ_f,model)
+
+    #Calculate total maintenance respiration    
+    R_m = Calc_Rₘ(Nₘ_f,Nₘ_w,Nₘ_r,Wf,Ww,Wr,model)
     
-    #Calculate total maintenance respiration 
-    #Calculate per sapwood mass nitrogen concentration
-    Nₘ_w = model.ccphpar.rW*Nₘ_f
-    #Calcualte per fine roots mass nitrogen concentration
-    Nₘ_r = model.ccphpar.rR*Nₘ_f
-    R_m = model.ccphpar.rₘ*(Nₘ_f*Wf+Nₘ_w*Ww+Nₘ_r*Wr)
+    NPP = Calc_NPP(P,R_m,model)
 
-    NPP = model.treepar.y*(P-R_m)
-    S = Wf/model.treepar.Tf+Wr/model.treepar.Tr
+    #Foliage and fine root time depednent senescence    
+    S = Calc_S_fr(Wf,Wr,model)
+    
 
-    #Calculate height growth
-    dH = (NPP-S)/(model.treepar.β₁*Ww/(model.treepar.β₁*H+model.treepar.β₂*Hs)+
-    model.treepar.z*Wf/(H-Hs)+
-    model.treepar.z*Ww/(H-Hs)+
-    model.treepar.z*Wr/(H-Hs))
+    #Calculate height growth  
+    dH = Calc_dH(NPP,S,Wf,Ww,Wr,H,Hs,model)
 
-    dN = 0 #Population density is constant  
-
+    dN = 0 #Population density is constant 
+    
     #---Calcualte leaf performance at crown base---
-    Δ_leaf = Calc_Δ_leaf(gₛ,Iᵢ,LAI,Nₘ_f,Jmax,model)
+    Δ_leaf = Calc_Δ_leaf(gₜ,Iᵢ,LAI,growthlength,Nₘ_f,Jmax,model)
 
     dHs = dH*(Δ_leaf<0) #No crown rise when leaf performance >= 0
 
@@ -191,9 +222,8 @@ function TreeStandDyn!(dy::Array{T,1},y::Array{T,1},model::CCPHStruct,t::T,growt
     dWf = model.treepar.αf*dAs
     dWr = αr*dAs
     dWw = model.treepar.ρw*dAs*(model.treepar.β₁*H+model.treepar.β₂*Hs)+
-    model.treepar.ρw*As*(model.treepar.β₁*dH+model.treepar.β₂*dHs)
-
-    #dy = [dWf,dWw,dH,dHs,dAs,dB,dN,dWr] 
+    model.treepar.ρw*As*(model.treepar.β₁*dH+model.treepar.β₂*dHs)    
+    
     dy[1] = dWf
     dy[2] = dWw
     dy[3] = dH
@@ -202,6 +232,4 @@ function TreeStandDyn!(dy::Array{T,1},y::Array{T,1},model::CCPHStruct,t::T,growt
     dy[6] = dB
     dy[7] = dN
     dy[8] = dWr
-
-    return dy
 end
