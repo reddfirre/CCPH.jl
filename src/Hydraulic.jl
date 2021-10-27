@@ -47,7 +47,7 @@ end
 
 #Calculate stomatal (gₛ) for a given K_cost (Pval)
 function Calc_K_costᵢₙᵥ(Pval::Float64,model::CCPHStruct)
-    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.θ
+    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.θₛ
 
     #Calc target ψ
     ψ_target = Pfunᵢₙᵥ(Pval,ψ₅₀,b)

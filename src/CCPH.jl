@@ -4,7 +4,7 @@ import Dates, Optim, DifferentialEquations
 
 export Constants, EnvironmentStruct, PhotoKineticRates, PhotoPar, PhotoPar!,
 TreeSize, TreePar, HydraulicsPar, CCPHStruct, CCPHOutput, CCPHTS, WeatherTS, CCPH_run,
-CCPHTraitmodel
+CCPHTraitmodel, CCPHStandGrowth!
 
 #include external files
 include("Auxiliary.jl")

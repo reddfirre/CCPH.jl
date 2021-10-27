@@ -202,11 +202,12 @@ mutable struct CCPHTS{T<:Float64}
     K_cost::Array{T,1}
     Gain::Array{T,1}
     gₛ::Array{T,1}
-    Nₘ_f::Array{T,1}    
+    Nₘ_f::Array{T,1} 
+    gₛ_crit::Array{T,1}   
 end
 CCPHTS() = CCPHTS(Float64[],Float64[],Float64[],Float64[],Float64[],Float64[],Float64[],Float64[],
-Float64[],Float64[],Float64[],Float64[],Float64[],Float64[],Float64[])
-function CCPHTS!(ccphts::CCPHTS,treesize::TreeSize) where {T<:Float64}    
+Float64[],Float64[],Float64[],Float64[],Float64[],Float64[],Float64[],Float64[])
+function CCPHTS!(ccphts::CCPHTS,treesize::TreeSize)    
     push!(ccphts.Wf,treesize.Wf)
     push!(ccphts.Ww,treesize.Ww)
     push!(ccphts.H,treesize.H)
@@ -215,7 +216,7 @@ function CCPHTS!(ccphts::CCPHTS,treesize::TreeSize) where {T<:Float64}
     push!(ccphts.B,treesize.B)
     push!(ccphts.N,treesize.N)
 end
-function CCPHTS!(ccphts::CCPHTS,modeloutput::CCPHOutput,gₛ::T,Nₘ_f::T) where {T<:Float64}
+function CCPHTS!(ccphts::CCPHTS,modeloutput::CCPHOutput,gₛ::T,Nₘ_f::T,gₛ_crit::T) where {T<:Float64}
     push!(ccphts.P,modeloutput.P)
     push!(ccphts.αr,modeloutput.αr)
     push!(ccphts.ψ_c,modeloutput.ψ_c)
@@ -224,12 +225,13 @@ function CCPHTS!(ccphts::CCPHTS,modeloutput::CCPHOutput,gₛ::T,Nₘ_f::T) where
     push!(ccphts.Gain,modeloutput.Gain)
     push!(ccphts.gₛ,gₛ)
     push!(ccphts.Nₘ_f,Nₘ_f)
+    push!(ccphts.gₛ_crit,gₛ_crit)
 end
 
 #Containter for weather related time series
 mutable struct WeatherTS{T<:Float64}
     date::Array{Dates.DateTime,1} #Dates 
-    daylight::Array{T,1} #Daylight lenght, given in seconds
+    daylight::Array{T,1} #Daylight lenght, for each timestep, given in seconds
     tot_annual_daylight::Array{T,1} #Total annual daylight lenght during growth period, given in seconds
     PAR::Array{T,1} #mol s⁻¹ m⁻²
     temp::Array{T,1} #Mean air temperature (⁰C)

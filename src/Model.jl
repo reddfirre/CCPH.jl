@@ -167,7 +167,8 @@ function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
 end
 
 #Differential equations describing the growth of the forest
-function TreeStandDyn!(dy::Array{T,1},y::Array{T,1},model::CCPHStruct,t::T,growthlength::T,gₛ::T,Nₘ_f::T,αr::T) where {T<:Float64}  
+function TreeStandDyn!(dy::Array{T,1},y::Array{T,1},model::CCPHStruct,
+    t::T,growthlength::T,gₛ::T,Nₘ_f::T,αr::T) where {T<:Float64}  
     Wf,Ww,H,Hs,As,B,N,Wr = y
 
     #Calcualte per leaf area nitrogen concentration    
@@ -194,8 +195,7 @@ function TreeStandDyn!(dy::Array{T,1},y::Array{T,1},model::CCPHStruct,t::T,growt
     NPP = Calc_NPP(P,R_m,model)
 
     #Foliage and fine root time depednent senescence    
-    S = Calc_S_fr(Wf,Wr,model)
-    
+    S = Calc_S_fr(Wf,Wr,model)    
 
     #Calculate height growth  
     dH = Calc_dH(NPP,S,Wf,Ww,Wr,H,Hs,model)
@@ -226,12 +226,13 @@ function TreeStandDyn!(dy::Array{T,1},y::Array{T,1},model::CCPHStruct,t::T,growt
 end
 
 #initiate weather parameters from WeatherTS
-function Init_weather_par!(i::Integer,weatherts::WeatherTS,photo_kinetic::PhotoKineticRates) 
-    growthlength = tot_daylight_hour_ts[i] #Length of day light time during the gorwth period of a specific year (s)
-    step_length = weatherts.daylight[i]/tot_daylight_hour_ts[i] #length of simulation step (proportion of a year)
+function Init_weather_par!(i::Integer,model::CCPHStruct,weatherts::WeatherTS,photo_kinetic::PhotoKineticRates) 
+    growthlength = weatherts.tot_annual_daylight[i] #Length of day light time during the gorwth period of a specific year (s)
+    step_length = weatherts.daylight[i]/weatherts.tot_annual_daylight[i] #length of simulation step (proportion of a year)
     model.env.I₀ = weatherts.PAR[i] 
     model.env.VPD = weatherts.VPD[i]  
-    model.ccphpar.θₛ = weatherts.θₛ[i]         
+    model.env.θₛ = weatherts.θₛ[i]   
+    model.env.Tₐ = weatherts.temp[i]
     PhotoPar!(model.photopar,photo_kinetic,weatherts.temp[i])
     model.treepar.Xₜ = weatherts.acclimation_fac[i] #Account for acclimation 
 
@@ -240,29 +241,31 @@ end
 
 #Simulate growth with weather time series
 function CCPHStandGrowth!(model::CCPHStruct,weatherts::WeatherTS,
-    tot_daylight_hour_ts::Array{T,1},nstep::Integer)::CCPHTS where {T<:Float64}  
+    photo_kinetic::PhotoKineticRates,nstep::Integer;
+    K_cost_crit::T=0.12,gₛ_guess::T=0.2,Nₘ_f_guess::T=0.01)::CCPHTS  where {T<:Float64}
     
-    CCPHTS = CCPHTS() #Init Time series struct
-    CCPHTS!(CCPHTS,model.treesize)      
+    ccphts = CCPHTS() #Init Time series struct
+    CCPHTS!(ccphts,model.treesize)      
        
     for i in 1:nstep  
                       
         #initiate weather parameters         
+        growthlength,step_length = Init_weather_par!(i,model,weatherts,photo_kinetic)
 
-
-        gₛ_crit = calc_gₛ_crit(model)       
+        gₛ_crit = Calc_K_costᵢₙᵥ(K_cost_crit,model)      
       
-        gₛ_opt,Nₘ_f_opt = SimpleCCPHTraitmodel(growthlength,model;gₛ_guess=gₛ_opt,Nₘ_f_guess=Nₘ_f_opt,gₛ_upper=gₛ_crit)
+        gₛ_opt,Nₘ_f_opt = CCPHTraitmodel(growthlength,model;
+        gₛ_guess=gₛ_guess,Nₘ_f_guess=Nₘ_f_guess,gₛ_lim_hi=gₛ_crit)
           
         modeloutput = CCPH_run(gₛ_opt,Nₘ_f_opt,growthlength,model)    
       
-        CCPHTS!(CCPHTS,modeloutput,gₛ_opt,Nₘ_f_opt,gₛ_crit)         
+        CCPHTS!(ccphts,modeloutput,gₛ_opt,Nₘ_f_opt,gₛ_crit)         
   
         y0 = [model.treesize.Wf,model.treesize.Ww,model.treesize.H,
         model.treesize.Hs,model.treesize.As,model.treesize.B,model.treesize.N,modeloutput.αr*model.treesize.As]        
         
         #Simulate one timestep
-        prob = ODEProblem((dy::Array{Float64,1},y::Array{Float64,1},P_in::SimpleCCPHStruct,t::Float64)->
+        prob = DifferentialEquations.ODEProblem((dy::Array{Float64,1},y::Array{Float64,1},P_in::CCPHStruct,t::Float64)->
         TreeStandDyn!(dy,y,P_in,t,growthlength,gₛ_opt,Nₘ_f_opt,modeloutput.αr),y0,(0.0,step_length),model)
         sol = DifferentialEquations.solve(prob)     
   
@@ -271,17 +274,20 @@ function CCPHStandGrowth!(model::CCPHStruct,weatherts::WeatherTS,
         model.treesize.Hs,model.treesize.As,model.treesize.B,model.treesize.N,Wr = sol(step_length)          
   
         #Update time series
-        CCPHTS!(CCPHTS,model.treesize)         
+        CCPHTS!(ccphts,model.treesize)         
     end    
 
     #initiate weather parameters
-    gₛ_crit = calc_gₛ_crit(model)
-    
-    gₛ_opt,Nₘ_f_opt = SimpleCCPHTraitmodel(growthlength,model;gₛ_guess=gₛ_opt,Nₘ_f_guess=Nₘ_f_opt,gₛ_upper=gₛ_crit)    
-    
-    modeloutput = Simple_CCPH(gₛ_opt,Nₘ_f_opt,growthlength,model)        
-    
-    SimpleCCPHTS!(CCPHTS,modeloutput,gₛ_opt,Nₘ_f_opt,gₛ_crit)
+    growthlength,step_length = Init_weather_par!(nstep+1,model,weatherts,photo_kinetic)
 
-    return CCPHTS
+    gₛ_crit = Calc_K_costᵢₙᵥ(K_cost_crit,model)
+    
+    gₛ_opt,Nₘ_f_opt = CCPHTraitmodel(growthlength,model;
+    gₛ_guess=gₛ_guess,Nₘ_f_guess=Nₘ_f_guess,gₛ_lim_hi=gₛ_crit)    
+    
+    modeloutput = CCPH_run(gₛ_opt,Nₘ_f_opt,growthlength,model)        
+    
+    CCPHTS!(ccphts,modeloutput,gₛ_opt,Nₘ_f_opt,gₛ_crit)
+
+    return ccphts
 end
