@@ -4,8 +4,8 @@ Pfun(ψ::T,ψ₅₀::T,b::T) where {T<:Float64} = (1/2)^(ψ/ψ₅₀)^b
 #Invers vulnerability curve
 Pfunᵢₙᵥ(Pval::T,ψ₅₀::T,b::T) where {T<:Float64} = ψ₅₀*(log(Pval)/log(0.5))^(1/b)
 
-#Soil water content (volumetric) to soil water potential (Pa) (Water retention curve) 
-function θₛ2ψₛ(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,λ::T=1.0,ψₐ::T=-0.098) where {T<:Float64}
+#Soil water content (volumetric) to soil water potential (MPa) (Water retention curve) 
+function θₛ2ψₛ(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,λ::T=1.0,ψₐ::T=-0.097706) where {T<:Float64}
     Sₑ = (θₛ-θᵣ)/(θₛₐₜ-θᵣ)
 
     return ψₐ*Sₑ^(-1/λ)
@@ -32,7 +32,7 @@ function Calc_K_cost(gₛ::T,model::CCPHStruct;limit_up::T=1.0,limit_lo::T=0.12)
     Kₛᵣ =   model.hydPar.Kₛᵣ₀*re_Kₛᵣ   
 
     #Soil water potential adjusted for gravitational pressure (MPa)
-    ψₛ_g = ψₛ-H*ρ_H2O*g*10^-6   
+    ψₛ_g = ψₛ-H*ρ_H2O*g*10^-6  
 
     #Calculate canopy conductance
     try

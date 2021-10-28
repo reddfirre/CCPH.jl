@@ -145,7 +145,7 @@ end
 
 #Find optimal triats
 function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
-    gₛ_guess::T=0.05,Nₘ_f_guess::T=0.012,gₛ_lim_lo::T=0.01,gₛ_lim_hi::T=0.5,
+    gₛ_guess::T=0.02,Nₘ_f_guess::T=0.012,gₛ_lim_lo::T=0.01,gₛ_lim_hi::T=0.5,
     Nₘ_f_lim_lo::T=0.007,Nₘ_f_lim_hi::T=0.05) where {T<:Float64}      
   
     x0 = [gₛ_guess, Nₘ_f_guess]    
@@ -242,7 +242,7 @@ end
 #Simulate growth with weather time series
 function CCPHStandGrowth!(model::CCPHStruct,weatherts::WeatherTS,
     photo_kinetic::PhotoKineticRates,nstep::Integer;
-    K_cost_crit::T=0.12,gₛ_guess::T=0.2,Nₘ_f_guess::T=0.01)::CCPHTS  where {T<:Float64}
+    K_cost_crit::T=0.12,gₛ_guess::T=0.02,Nₘ_f_guess::T=0.012)::CCPHTS  where {T<:Float64}
     
     ccphts = CCPHTS() #Init Time series struct
     CCPHTS!(ccphts,model.treesize)      
