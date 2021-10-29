@@ -247,13 +247,13 @@ function CCPHStandGrowth!(model::CCPHStruct,weatherts::WeatherTS,
     ccphts = CCPHTS() #Init Time series struct
     CCPHTS!(ccphts,model.treesize)      
        
-    for i in 1:nstep  
-                      
+    for i in 1:nstep
+                                   
         #initiate weather parameters         
         growthlength,step_length = Init_weather_par!(i,model,weatherts,photo_kinetic)
 
-        gₛ_crit = Calc_K_costᵢₙᵥ(K_cost_crit,model)      
-      
+        gₛ_crit = Calc_K_costᵢₙᵥ(K_cost_crit,model)         
+
         gₛ_opt,Nₘ_f_opt = CCPHTraitmodel(growthlength,model;
         gₛ_guess=gₛ_guess,Nₘ_f_guess=Nₘ_f_guess,gₛ_lim_hi=gₛ_crit)
           
