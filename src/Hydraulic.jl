@@ -4,16 +4,19 @@ Pfun(ψ::T,ψ₅₀::T,b::T) where {T<:Float64} = (1/2)^(ψ/ψ₅₀)^b
 #Invers vulnerability curve
 Pfunᵢₙᵥ(Pval::T,ψ₅₀::T,b::T) where {T<:Float64} = ψ₅₀*(log(Pval)/log(0.5))^(1/b)
 
+#Effective saturation 
+CalcSₑ(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006) where {T<:Float64} = (θₛ-θᵣ)/(θₛₐₜ-θᵣ)
+
 #Soil water content (volumetric) to soil water potential (MPa) (Water retention curve) 
 function θₛ2ψₛ(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,λ::T=1.0,ψₐ::T=-0.097706) where {T<:Float64}
-    Sₑ = (θₛ-θᵣ)/(θₛₐₜ-θᵣ)
+    Sₑ = CalcSₑ(θₛ;θₛₐₜ=θₛₐₜ,θᵣ=θᵣ)
 
     return ψₐ*Sₑ^(-1/λ)
 end    
 
 #Relative Soil conductance (ratio betwen actual and maximal)
 function Re_Kₛᵣfun(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,p::T=4.66) where {T<:Float64}
-    Sₑ = (θₛ-θᵣ)/(θₛₐₜ-θᵣ)
+    Sₑ = CalcSₑ(θₛ;θₛₐₜ=θₛₐₜ,θᵣ=θᵣ)
     return Sₑ^p
 end
 
