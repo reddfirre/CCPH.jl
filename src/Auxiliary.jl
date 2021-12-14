@@ -80,7 +80,7 @@ VPDₜ(T::AbstractFloat,RH::AbstractFloat) = SVPₜ(T)*(1-RH/100)
 
 #Calcualte day-light hours
 function daylighthour(L::Real,d::Real)
-    #Jenkins, 2013, The Sun's position in the sky
+    #Jenkins, 2013, The Sun's position in the sky (eq 17)
     #L = latitude (rad)
     #d = day of the year (d=1 is january 1)
     M = -0.0410+0.017202*d
