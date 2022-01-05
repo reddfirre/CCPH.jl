@@ -159,12 +159,11 @@ mutable struct HydraulicsPar{T<:Float64}
     ψ₅₀::T #water potential which causes 50% loss in leaf conductance (MPa)  
     b::T #Sensitivity of leaf conductance to water potential (-)
     i::T #Sensitivity to hydraulic failure
-    Kₓₗ₀::T #Maximum xylem-leaf hydraulic conductance (mol m⁻² leaf s⁻¹ MPa⁻¹)
-    Kₛᵣ₀::T #Maximum soil hydraulic conductance 
+    Kₓₗ₀::T #Maximum xylem-leaf hydraulic conductance (mol m⁻² leaf s⁻¹ MPa⁻¹)     
 end
 #Standard values
-HydraulicsPar(;ψ₅₀::T=-2.0,b::T=2.0,i::T=1.0,Kₓₗ₀::T=0.01,Kₛᵣ₀::T=0.1) where {T<:Float64} = 
-HydraulicsPar(ψ₅₀,b,i,Kₓₗ₀,Kₛᵣ₀)
+HydraulicsPar(;ψ₅₀::T=-2.0,b::T=2.0,i::T=1.0,Kₓₗ₀::T=0.01) where {T<:Float64} = 
+HydraulicsPar(ψ₅₀,b,i,Kₓₗ₀)
 
 #Collection of structs used for the Photosynthesis and Hydraulic model
 mutable struct CCPHStruct

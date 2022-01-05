@@ -29,19 +29,16 @@ function Calc_K_cost(gₛ::T,model::CCPHStruct;limit_up::T=1.0,limit_lo::T=0.12)
     #Calculate transpiration    
     E = 1.6*gₛ*model.env.VPD/model.env.P
     #Caluclate soil water potential
-    ψₛ = θₛ2ψₛ(θₛ)
-    #Calcualate soil conductance
-    re_Kₛᵣ = Re_Kₛᵣfun(θₛ)    
-    Kₛᵣ =   model.hydPar.Kₛᵣ₀*re_Kₛᵣ   
+    ψₛ = θₛ2ψₛ(θₛ)      
 
     #Soil water potential adjusted for gravitational pressure (MPa)
     ψₛ_g = ψₛ-H*ρ_H2O*g*10^-6  
 
     #Calculate canopy conductance
     try
-        K_cost = bisection(x->x-Pfun(ψₛ_g-E*(2*Kₓₗ₀*x+Kₛᵣ)/(2*Kₓₗ₀*x*Kₛᵣ),ψ₅₀,b),limit_lo, limit_up) #lower than 0.12 resultts in hydraulic failure
+        K_cost = bisection(x->x-Pfun(ψₛ_g-E/(2*Kₓₗ₀*x),ψ₅₀,b),limit_lo, limit_up) #lower than 0.12 resultts in hydraulic failure
         Kₓₗ = Kₓₗ₀*K_cost
-        ψ_c = ψₛ_g-E*(Kₓₗ+Kₛᵣ)/(Kₓₗ*Kₛᵣ)         
+        ψ_c = ψₛ_g-E/Kₓₗ       
         return K_cost, Kₓₗ, ψ_c 
     catch
         error("Could not find a feasable canopy conductance")
@@ -59,14 +56,11 @@ function Calc_K_costᵢₙᵥ(Pval::Float64,model::CCPHStruct)
     #Calculate tree height
     H = model.treesize.H    
     #Caluclate soil water potential
-    ψₛ = θₛ2ψₛ(θₛ)
-    #Calcualate soil conductance
-    re_Kₛᵣ = Re_Kₛᵣfun(θₛ)    
-    Kₛᵣ =   model.hydPar.Kₛᵣ₀*re_Kₛᵣ  
+    ψₛ = θₛ2ψₛ(θₛ)    
     #Soil water potential adjusted for gravitational pressure (MPa)
     ψₛ_g = ψₛ-H*ρ_H2O*g*10^-6     
     #Calculate target E
-    E_target = -(ψ_target-ψₛ_g)*(2*Kₓₗ*Kₛᵣ)/(2*Kₓₗ+Kₛᵣ)
+    E_target = -(ψ_target-ψₛ_g)*2*Kₓₗ
     #Calcualte target gₛ
     gₛ_target = E_target*model.env.P/(1.6*model.env.VPD)
 
