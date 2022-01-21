@@ -7,9 +7,11 @@ Calc_LAI(model::CCPHStruct) = model.treesize.Wf/model.treepar.LMA*model.treesize
 
 #Calculate the irradiance incident on a leaf at irradiance I
 Calc_Iᵢ(I::Float64,model::CCPHStruct) = I*model.treepar.k/(1-model.treepar.m)
+Calc_Iᵢ(I::Float64,treepar::TreePar) = I*treepar.k/(1-treepar.m)
 
 #calcualte total conductance
 Calc_gₜ(gₛ::Float64,model::CCPHStruct) = gₛ*model.treepar.r_gₛ
+Calc_gₜ(gₛ::Float64,treepar::TreePar) = gₛ*treepar.r_gₛ
 
 #Calculate per sapwood mass nitrogen concentration
 Calc_Nₘ_w(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.rW*Nₘ_f
@@ -145,7 +147,7 @@ end
 
 #Find optimal triats
 function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
-    gₛ_guess::T=0.02,Nₘ_f_guess::T=0.012,gₛ_lim_lo::T=0.01,gₛ_lim_hi::T=0.5,
+    gₛ_guess::T=0.02,Nₘ_f_guess::T=0.012,gₛ_lim_lo::T=0.001,gₛ_lim_hi::T=0.5,
     Nₘ_f_lim_lo::T=0.007,Nₘ_f_lim_hi::T=0.05) where {T<:Float64}      
   
     x0 = [gₛ_guess, Nₘ_f_guess]    

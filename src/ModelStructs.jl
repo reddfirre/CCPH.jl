@@ -7,9 +7,10 @@ mutable struct Constants{T<:Float64}
     ρ_H2O::T #Density water (Kg m⁻³)    
     g::T #gravitational acceleration (m s⁻²)
     r::T #ratio water conductance:co2 conductance (-)    
+    ρ_vapor::T #Density of vapor (Kg m⁻³)
 end
-function Constants(;M_H2O::T=0.018,M_C::T=0.012,ρ_H2O::T=997.0,g::T=9.82,r::T=1.6) where {T<:Float64} 
-    Constants(M_H2O,M_C,ρ_H2O,g,r)
+function Constants(;M_H2O::T=0.018,M_C::T=0.012,ρ_H2O::T=997.0,g::T=9.82,r::T=1.6,ρ_vapor::T=0.749) where {T<:Float64} 
+    Constants(M_H2O,M_C,ρ_H2O,g,r,ρ_vapor)
 end
 
 #Struct containing environmental variables
@@ -237,4 +238,12 @@ mutable struct WeatherTS{T<:Float64}
     VPD::Array{T,1} #Pa
     θₛ::Array{T,1} #Volumetric soil water content 
     acclimation_fac::Array{T,1} #Factor [0,1] accounting for annual acclimation cycle, see Mäkelä 2004 & 2008  
+end
+
+function EnvironmentStruct(weatherts::WeatherTS,ind::Integer)
+    I₀ = weatherts.PAR[ind] 
+    VPD = weatherts.VPD[ind]  
+    θₛ = weatherts.θₛ[ind]   
+    Tₐ = weatherts.temp[ind]
+    EnvironmentStruct(;I₀=I₀,Tₐ=Tₐ,VPD=VPD,θₛ=θₛ) 
 end
