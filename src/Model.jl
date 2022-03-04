@@ -1,6 +1,19 @@
-#Function for calcualting Jmax from Nitrogen per leaf area (Nₐ)
+#Function for calculating Jmax at optimal (Jmaxₒₚₜ) temperature from Nitrogen per leaf area (Nₐ)
+function Calc_Jmax(Nₐ::T,a::T,b::T) where {T<:Float64}     
+    return max(a*Nₐ+b,0.0)
+end
+#Function for calcualting the seasonal peak Jmax from Nitrogen per leaf area (Nₐ)
 function Calc_Jmax(Nₐ::T,a::T,b::T,b_Jmax::T) where {T<:Float64}     
-    return max(b_Jmax*(a*Nₐ+b),0.0)
+    return b_Jmax*Calc_Jmax(Nₐ,a,b)
+end
+#Function for calcualting Jmax from Nitrogen per leaf area (Nₐ)
+function Calc_Jmax(Nₐ::T,a::T,b::T,b_Jmax::T,xₜ::T) where {T<:Float64}     
+    return xₜ*Calc_Jmax(Nₐ,a,b,b_Jmax) 
+end
+
+#Function for calculating the quantum yield from Jmax
+function Calc_α(Jmax::T,r_α::T) where {T<:Float64} 
+    return Jmax*r_α
 end
 
 Calc_LAI(model::CCPHStruct) = model.treesize.Wf/model.treepar.LMA*model.treesize.N
@@ -111,7 +124,9 @@ function CCPH_run(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where {T<
     #Calcualte per leaf area nitrogen concentration    
     Nₐ = Calc_Nₐ(Nₘ_f,model)
     #Calculate Jmax
-    Jmax = Calc_Jmax(Nₐ,model.treepar.a_Jmax,model.treepar.b_Jmax,model.photopar.b_Jmax)
+    Jmax = Calc_Jmax(Nₐ,model.treepar.a_Jmax,model.treepar.b_Jmax,model.photopar.b_Jmax,model.treepar.Xₜ)    
+    #Quantum yield
+    model.photopar.α = Calc_α(Jmax,model.treepar.r_α)
     #Irradiance incident on a leaf at canopy top
     Iᵢ = Calc_Iᵢ(model.env.I₀,model)
     #Calculate LAI 
@@ -148,7 +163,7 @@ end
 #Find optimal triats
 function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
     gₛ_guess::T=0.02,Nₘ_f_guess::T=0.012,gₛ_lim_lo::T=0.001,gₛ_lim_hi::T=0.5,
-    Nₘ_f_lim_lo::T=0.007,Nₘ_f_lim_hi::T=0.05) where {T<:Float64}      
+    Nₘ_f_lim_lo::T=0.007,Nₘ_f_lim_hi::T=0.07) where {T<:Float64}      
   
     x0 = [gₛ_guess, Nₘ_f_guess]    
   
@@ -168,6 +183,7 @@ function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
     return gₛ_opt,Nₘ_f_opt
 end
 
+#---This needs to be updated!---
 #Differential equations describing the growth of the forest
 function TreeStandDyn!(dy::Array{T,1},y::Array{T,1},model::CCPHStruct,
     t::T,growthlength::T,gₛ::T,Nₘ_f::T,αr::T) where {T<:Float64}  
@@ -241,6 +257,7 @@ function Init_weather_par!(i::Integer,model::CCPHStruct,weatherts::WeatherTS,pho
     return growthlength,step_length
 end
 
+#---This needs to be updated!---
 #Simulate growth with weather time series
 function CCPHStandGrowth!(model::CCPHStruct,weatherts::WeatherTS,
     photo_kinetic::PhotoKineticRates,nstep::Integer;

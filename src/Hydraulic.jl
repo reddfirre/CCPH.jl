@@ -14,7 +14,7 @@ function θₛ2ψₛ(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,λ::T=1.0,ψₐ
     return ψₐ*Sₑ^(-1/λ)
 end    
 
-#Relative Soil conductance (ratio betwen actual and maximal)
+#Relative Soil conductance (ratio between actual and maximal)
 function Re_Kₛᵣfun(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,p::T=4.66) where {T<:Float64}
     Sₑ = CalcSₑ(θₛ;θₛₐₜ=θₛₐₜ,θᵣ=θᵣ)
     return Sₑ^p
