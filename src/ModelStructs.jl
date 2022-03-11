@@ -149,12 +149,13 @@ mutable struct TreePar{T<:Float64}
     r_gₛ::T #total leaf conductance (stomatal+mesophyll) to stomatal conductance (gₜ/gₛ)
     Xₜ::T #Factor [0,1] accounting for the delayed effect of temperature on gross primary production (-) 
     r_α::T #Ratio between the quantum yield and Jmax (m² s mol)
+    Nₘ_f::T #Foliage mass-based N content (Kg/Kg)
 end
 #Standard values
 TreePar(;αf::T=460.0,ρw::T=400.0,β₁::T=1.27,β₂::T=-0.27,Tf::T=3.33,Tr::T=1.25,y::T=1.54,z::T=1.86,
 Nₛ::T=0.04,rₘ::T=24.0,k::T=0.52,m::T=0.05,a_Jmax::T=0.033,b_Jmax::T=-1.1e-5,LMA::T=0.256
-,Kr::T = 0.35,rW::T = 0.07,rR::T = 0.6,r_gₛ::T = 0.42,Xₜ::T = 1.0,r_α::T = 1945.9) where {T<:Float64}  = 
-TreePar(αf,ρw,β₁,β₂,Tf,Tr,y,z,Nₛ,rₘ,k,m,a_Jmax,b_Jmax,LMA,Kr,rW,rR,r_gₛ,Xₜ,r_α)
+,Kr::T = 0.35,rW::T = 0.07,rR::T = 0.6,r_gₛ::T = 0.42,Xₜ::T = 1.0,r_α::T = 1945.9,Nₘ_f::T=0.02) where {T<:Float64}  = 
+TreePar(αf,ρw,β₁,β₂,Tf,Tr,y,z,Nₛ,rₘ,k,m,a_Jmax,b_Jmax,LMA,Kr,rW,rR,r_gₛ,Xₜ,r_α,Nₘ_f)
 
 #Parameteres used in the Hydraulics model
 mutable struct HydraulicsPar{T<:Float64}

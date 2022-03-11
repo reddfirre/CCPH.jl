@@ -153,7 +153,8 @@ function CCPH_run(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where {T<
 end
 
 function Trait_objective_fun(x::Array{T,1},growthlength::T,model::CCPHStruct) where {T<:Float64} 
-    gₛ,Nₘ_f = x
+    gₛ = x[1]
+    Nₘ_f = model.treepar.Nₘ_f
 
     modeloutput = CCPH_run(gₛ,Nₘ_f,growthlength,model)
 
@@ -162,13 +163,12 @@ end
 
 #Find optimal triats
 function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
-    gₛ_guess::T=0.02,Nₘ_f_guess::T=0.012,gₛ_lim_lo::T=0.001,gₛ_lim_hi::T=0.5,
-    Nₘ_f_lim_lo::T=0.007,Nₘ_f_lim_hi::T=0.07) where {T<:Float64}      
+    gₛ_guess::T=0.02,gₛ_lim_lo::T=0.001,gₛ_lim_hi::T=0.5) where {T<:Float64}      
   
-    x0 = [gₛ_guess, Nₘ_f_guess]    
+    x0 = [gₛ_guess]  
   
-    lower = [gₛ_lim_lo, Nₘ_f_lim_lo]   
-    upper = [gₛ_lim_hi, Nₘ_f_lim_hi]
+    lower = [gₛ_lim_lo]  
+    upper = [gₛ_lim_hi]
   
     inner_optimizer = Optim.BFGS(linesearch=Optim.LineSearches.BackTracking())   
     
@@ -178,7 +178,7 @@ function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
     Optim.converged(opt_trait)||error("No optimal traits could be found")
     
     gₛ_opt = opt_trait.minimizer[1]
-    Nₘ_f_opt = opt_trait.minimizer[2]
+    Nₘ_f_opt = model.treepar.Nₘ_f
   
     return gₛ_opt,Nₘ_f_opt
 end
