@@ -12,8 +12,8 @@ function Calc_Jmax(Nₐ::T,a::T,b::T,b_Jmax::T,xₜ::T) where {T<:Float64}
 end
 
 #Function for calculating the quantum yield from Jmax
-function Calc_α(Jmax::T,r_α::T) where {T<:Float64} 
-    return Jmax*r_α
+function Calc_α(xₜ::T,α_max::T) where {T<:Float64} 
+    return xₜ*α_max
 end
 
 Calc_LAI(model::CCPHStruct) = model.treesize.Wf/model.treepar.LMA*model.treesize.N
@@ -126,7 +126,7 @@ function CCPH_run(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where {T<
     #Calculate Jmax
     Jmax = Calc_Jmax(Nₐ,model.treepar.a_Jmax,model.treepar.b_Jmax,model.photopar.b_Jmax,model.treepar.Xₜ)    
     #Quantum yield
-    model.photopar.α = Calc_α(Jmax,model.treepar.r_α)
+    model.photopar.α = Calc_α(model.treepar.Xₜ,model.treepar.α_max)
     #Irradiance incident on a leaf at canopy top
     Iᵢ = Calc_Iᵢ(model.env.I₀,model)
     #Calculate LAI 
@@ -162,8 +162,8 @@ end
 
 #Find optimal triats
 function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
-    gₛ_guess::T=0.02,Nₘ_f_guess::T=0.012,gₛ_lim_lo::T=0.001,gₛ_lim_hi::T=0.5,
-    Nₘ_f_lim_lo::T=0.007,Nₘ_f_lim_hi::T=0.07) where {T<:Float64}      
+    gₛ_guess::T=0.02,gₛ_lim_lo::T=0.001,gₛ_lim_hi::T=0.5,
+    Nₘ_f_guess::T=0.012,Nₘ_f_lim_lo::T=0.001,Nₘ_f_lim_hi::T=0.1) where {T<:Float64}      
   
     x0 = [gₛ_guess, Nₘ_f_guess]    
   
