@@ -33,6 +33,118 @@ Calc_Nₘ_r(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.rR*Nₘ_f
 #Calcualte per leaf area nitrogen concentration
 Calc_Nₐ(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.LMA*Nₘ_f
 
+#Weighted mean nitrogen concentration (mass based)
+function Calc_Nₘ(H::T,Hₛ::T,Wf::T,Ww::T,Wr::T,Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,β₁::T,β₂::T,z::T) where {T<:Float64}
+    Δ = z/(H-Hₛ)
+    Δw = β₁*Ww/(β₁*H+β₂*Hₛ)
+
+    Nₘ = (Nₘ_w*Δw+Δ*(Nₘ_f*Wf+Nₘ_w*Ww+Nₘ_r*Wr))/(Δw+Δ*(Wf+Ww+Wr))
+    return Nₘ
+end
+function Calc_Nₘ(Wr::T,Nₘ_f::T,model::CCPHStruct) where {T<:Float64}
+    Nₘ_w = Calc_Nₘ_w(Nₘ_f,model)
+    Nₘ_r = Calc_Nₘ_r(Nₘ_f,model)
+    H,Hₛ,Wf,Ww = model.treesize.H,model.treesize.Hs,model.treesize.Wf,model.treesize.Ww
+    β₁,β₂,z = model.treepar.β₁,model.treepar.β₂,model.treepar.z
+
+    Nₘ = Calc_Nₘ(H,Hₛ,Wf,Ww,Wr,Nₘ_f,Nₘ_w,Nₘ_r,β₁,β₂,z)
+    return Nₘ
+end
+function Calc_Nₘ(Nₘ_f::T,model::CCPHStruct) where {T<:Float64}
+    Nₘ = Calc_Nₘ(0.0,Nₘ_f::T,model::CCPHStruct)
+    return Nₘ
+end
+
+#Calcualte the ration between Nₘ and Nₘ_f
+function Calc_Δₘ(H::T,Hₛ::T,Wf::T,Ww::T,Wr::T,r_w::T,r_r::T,β₁::T,β₂::T,z::T) where {T<:Float64}
+    Δ = z/(H-Hₛ)
+    Δw = β₁*Ww/(β₁*H+β₂*Hₛ)
+
+    Δₘ = (r_w*Δw+Δ*(Wf+r_w*Ww+r_r*Wr))/(Δw+Δ*(Wf+Ww+Wr))
+    return Δₘ
+end
+function Calc_Δₘ(Wr::T,model::CCPHStruct) where {T<:Float64}
+    r_w = model.treepar.rW
+    r_r = model.treepar.rR
+    H,Hₛ,Wf,Ww = model.treesize.H,model.treesize.Hs,model.treesize.Wf,model.treesize.Ww
+    β₁,β₂,z = model.treepar.β₁,model.treepar.β₂,model.treepar.z
+
+    Δₘ = Calc_Δₘ(H,Hₛ,Wf,Ww,Wr,r_w,r_r,β₁,β₂,z)
+    return Δₘ
+end
+function Calc_Δₘ(model::CCPHStruct)   
+
+    Δₘ = Calc_Δₘ(0.0,model)
+    return Δₘ
+end
+
+#
+function Calc_a_r1(Nₘ_f::T,Δₘ::T,Tᵣ::T,rₘ::T,y::T,rᵣ::T) where {T<:Float64}   
+    a_r1 = (rᵣ-Δₘ)/Tᵣ-y*Δₘ*rₘ*rᵣ*Nₘ_f
+    return a_r1
+end
+function Calc_a_r1(Nₘ_f::T,Δₘ::T,model::CCPHStruct) where {T<:Float64}
+    Tᵣ,rₘ,y,rᵣ =  model.treepar.Tr,model.treepar.rₘ,model.treepar.y,model.treepar.rR
+    a_r1 = Calc_a_r1(Nₘ_f,Δₘ,Tᵣ,rₘ,y,rᵣ)
+    return a_r1
+end
+function range_a_r1(Nₘ_f::Float64,model::CCPHStruct)
+    Δₘ₀ = Calc_Δₘ(model) 
+    rᵣ = model.treepar.rR
+    a_r1_range = (Calc_a_r1(Nₘ_f,rᵣ,model),Calc_a_r1(Nₘ_f,Δₘ₀,model))
+    return a_r1_range
+end
+#
+function Calc_a_r0(P::T,Δₘ::T,Wf::T,Ww::T,Nₘ_f::T,Nₘ_w::T,rₘ::T,y::T,Tᵣ::T) where {T<:Float64} 
+    a_r0 = y*(P-rₘ*Nₘ_f*Wf-rₘ*Nₘ_w*Ww)*Δₘ+Wf*(1-Δₘ)/Tᵣ
+    return a_r0
+end
+function Calc_a_r0(P::T,Δₘ::T,Nₘ_f::T,model::CCPHStruct) where {T<:Float64} 
+    Wf,Ww = model.treesize.Wf,model.treesize.Ww
+    rₘ,y,Tᵣ = model.treepar.rₘ,model.treepar.y,model.treepar.Tr
+    Nₘ_w = Calc_Nₘ_w(Nₘ_f,model)
+    a_r0 = Calc_a_r0(P,Δₘ,Wf,Ww,Nₘ_f,Nₘ_w,rₘ,y,Tᵣ)
+    return a_r0
+end
+function range_a_r0(P::T,Nₘ_f::T,model::CCPHStruct) where {T<:Float64}
+    Δₘ₀ = Calc_Δₘ(model) 
+    rᵣ = model.treepar.rR
+    a_r0_range = (Calc_a_r0(P,Δₘ₀,Nₘ_f,model),Calc_a_r0(P,rᵣ,Nₘ_f,model))
+    return a_r0_range
+end
+
+function Calc_crit(P::T,Wf::T,Ww::T,Nₘ_f::T,Nₘ_w::T,rₘ::T) where {T<:Float64}
+    crit = P-rₘ*Nₘ_f*Wf-rₘ*Nₘ_w*Ww
+    return crit
+end
+function Calc_crit(P::T,Nₘ_f::T,model::CCPHStruct) where {T<:Float64}
+    Wf,Ww = model.treesize.Wf,model.treesize.Ww
+    rₘ = model.treepar.rₘ
+    Nₘ_w = Calc_Nₘ_w(Nₘ_f,model)
+    crit = Calc_crit(P,Wf,Ww,Nₘ_f,Nₘ_w,rₘ)
+    return crit
+end
+
+#Nₘ_f>Crit guaranteed solution
+function Calc_Nₘ_f_crit(Δₘ₀::T,Tᵣ::T,rₘ::T,y::T,rᵣ::T) where {T<:Float64}  
+    Nₘ_f_crit = (rᵣ-Δₘ₀)/(Tᵣ*y*Δₘ₀*rₘ*rᵣ)
+    return Nₘ_f_crit
+end
+function Calc_Nₘ_f_crit(Δₘ₀::Float64,model::CCPHStruct)
+    Tᵣ,rₘ,y,rᵣ = model.treepar.Tr,model.treepar.rₘ,model.treepar.y,model.treepar.rR
+
+    Nₘ_f_crit = Calc_Nₘ_f_crit(Δₘ₀,Tᵣ,rₘ,y,rᵣ)
+    return Nₘ_f_crit
+end
+function Calc_Nₘ_f_crit(model::CCPHStruct)
+    Δₘ₀ = Calc_Δₘ(model)
+    Tᵣ,rₘ,y,rᵣ = model.treepar.Tr,model.treepar.rₘ,model.treepar.y,model.treepar.rR
+
+    Nₘ_f_crit = Calc_Nₘ_f_crit(Δₘ₀,Tᵣ,rₘ,y,rᵣ)
+    return Nₘ_f_crit
+end
+
+
 #Calculate total maintenance respiration
 function Calc_Rₘ(Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,Wf::T,Ww::T,Wr::T,model::CCPHStruct) where {T<:Float64}
     Rₘ = model.treepar.rₘ*(Nₘ_f*Wf+Nₘ_w*Ww+Nₘ_r*Wr)
@@ -87,7 +199,7 @@ function Find_αr(Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,P::T,model::CCPHStruct) where {T
     αr_vec = solvecubic(θ₃, θ₂, θ₁, θ₀)     
     filter!(x->isnan(x)==false&&isinf(x)==false&&isreal(x)&&x>0.0,αr_vec)   
 
-    isempty(αr_vec)==false||error("No feasible αr")    
+    isempty(αr_vec)==false||error("No feasible αr: Nₘ_f=$(Nₘ_f), Crit=$(Calc_crit(P,Nₘ_f,model)), a_r0∈$(range_a_r0(P,Nₘ_f,model)), a_r1∈$(range_a_r1(Nₘ_f,model))")    
 
     return αr_vec
 end
@@ -163,7 +275,7 @@ end
 #Find optimal triats
 function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
     gₛ_guess::T=0.02,gₛ_lim_lo::T=0.001,gₛ_lim_hi::T=0.5,
-    Nₘ_f_guess::T=0.012,Nₘ_f_lim_lo::T=0.001,Nₘ_f_lim_hi::T=0.1) where {T<:Float64}      
+    Nₘ_f_guess::T=0.012,Nₘ_f_lim_lo::T=0.001,Nₘ_f_lim_hi::T=0.05) where {T<:Float64}      
   
     x0 = [gₛ_guess, Nₘ_f_guess]    
   
@@ -175,7 +287,7 @@ function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
     opt_trait = Optim.optimize(x->Trait_objective_fun(x,growthlength,model),
     lower,upper,x0,Optim.Fminbox(inner_optimizer))
   
-    Optim.converged(opt_trait)||error("No optimal traits could be found")
+    Optim.converged(opt_trait)||error("No optimal traits could be found")    
     
     gₛ_opt = opt_trait.minimizer[1]
     Nₘ_f_opt = opt_trait.minimizer[2]

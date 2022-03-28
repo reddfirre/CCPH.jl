@@ -1,6 +1,6 @@
 module CCPH
 #Import packages
-import Dates, Optim, DifferentialEquations
+import Dates, Optim, DifferentialEquations, SpecialFunctions
 
 export Constants, EnvironmentStruct, PhotoKineticRates, PhotoPar, PhotoPar!,
 TreeSize, TreePar, HydraulicsPar, CCPHStruct, CCPHOutput, CCPHTS, WeatherTS, CCPH_run,

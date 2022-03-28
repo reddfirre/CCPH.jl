@@ -22,6 +22,22 @@ function bisection(f::Function, a::AbstractFloat, b::AbstractFloat;
     return c
 end
 
+#Fixed-point iteration method for finding a solution to the eqution f(x) = x
+function fixpoint(f::Function,x0::Float64;Max_step::Integer=200,Abs_tol::Float64=10^-4)
+    x_old = x0
+    x_new = f(x_old)
+    abs_error = abs(x_old-x_new)  
+    step_nr = 1 
+    while abs_error>Abs_tol
+        step_nr < Max_step||error("fixpoint: |f(x)-x|>Abs_tol after Max_step iterations")
+        x_old = x_new       
+        x_new = f(x_old)
+        abs_error = abs(x_old-x_new)
+        step_nr += 1        
+    end
+    return x_new
+end
+
 #Function for finding the real roots for the real polynomial f(x) = ax³+bx²+cx+d
 function solvecubic(a::Real, b::Real, c::Real, d::Real)
     function one_real_root(a::Real, b::Real, g::Float64, h::Float64)
