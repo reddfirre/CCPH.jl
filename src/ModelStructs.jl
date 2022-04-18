@@ -178,13 +178,13 @@ mutable struct CCPHStruct
 end
 
 #Struct collecting output from the Coupled Canopy Photosynthesis and Hydraulic model
-mutable struct CCPHOutput
-    P::Float64
-    αr::Float64
-    ψ_c::Float64
-    Kₓₗ::Float64
-    K_cost::Float64
-    Gain::Float64
+mutable struct CCPHOutput{T<:Real}
+    P::T
+    αr::T
+    ψ_c::T
+    Kₓₗ::T
+    K_cost::T
+    Gain::T
 end
 
 #Struct collecting times series results from growth simulation

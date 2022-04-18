@@ -1,13 +1,13 @@
 #Function for calculating Jmax at optimal (Jmaxₒₚₜ) temperature from Nitrogen per leaf area (Nₐ)
-function Calc_Jmax(Nₐ::T,a::T,b::T) where {T<:Float64}     
+function Calc_Jmax(Nₐ::S,a::T,b::T) where {S<:Real,T<:Float64}     
     return max(a*Nₐ+b,0.0)
 end
 #Function for calcualting the seasonal peak Jmax from Nitrogen per leaf area (Nₐ)
-function Calc_Jmax(Nₐ::T,a::T,b::T,b_Jmax::T) where {T<:Float64}     
+function Calc_Jmax(Nₐ::S,a::T,b::T,b_Jmax::T) where {S<:Real,T<:Float64}     
     return b_Jmax*Calc_Jmax(Nₐ,a,b)
 end
 #Function for calcualting Jmax from Nitrogen per leaf area (Nₐ)
-function Calc_Jmax(Nₐ::T,a::T,b::T,b_Jmax::T,xₜ::T) where {T<:Float64}     
+function Calc_Jmax(Nₐ::S,a::T,b::T,b_Jmax::T,xₜ::T) where {S<:Real,T<:Float64}     
     return xₜ*Calc_Jmax(Nₐ,a,b,b_Jmax) 
 end
 
@@ -23,37 +23,15 @@ Calc_Iᵢ(I::Float64,model::CCPHStruct) = I*model.treepar.k/(1-model.treepar.m)
 Calc_Iᵢ(I::Float64,treepar::TreePar) = I*treepar.k/(1-treepar.m)
 
 #calcualte total conductance
-Calc_gₜ(gₛ::Float64,model::CCPHStruct) = gₛ*model.treepar.r_gₛ
-Calc_gₜ(gₛ::Float64,treepar::TreePar) = gₛ*treepar.r_gₛ
+Calc_gₜ(gₛ::Real,model::CCPHStruct) = gₛ*model.treepar.r_gₛ
+Calc_gₜ(gₛ::Real,treepar::TreePar) = gₛ*treepar.r_gₛ
 
 #Calculate per sapwood mass nitrogen concentration
-Calc_Nₘ_w(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.rW*Nₘ_f
+Calc_Nₘ_w(Nₘ_f::Real,model::CCPHStruct) = model.treepar.rW*Nₘ_f
 #Calcualte per fine roots mass nitrogen concentration
-Calc_Nₘ_r(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.rR*Nₘ_f      
+Calc_Nₘ_r(Nₘ_f::Real,model::CCPHStruct) = model.treepar.rR*Nₘ_f      
 #Calcualte per leaf area nitrogen concentration
-Calc_Nₐ(Nₘ_f::Float64,model::CCPHStruct) = model.treepar.LMA*Nₘ_f
-
-#Weighted mean nitrogen concentration (mass based)
-function Calc_Nₘ(H::T,Hₛ::T,Wf::T,Ww::T,Wr::T,Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,β₁::T,β₂::T,z::T) where {T<:Float64}
-    Δ = z/(H-Hₛ)
-    Δw = β₁*Ww/(β₁*H+β₂*Hₛ)
-
-    Nₘ = (Nₘ_w*Δw+Δ*(Nₘ_f*Wf+Nₘ_w*Ww+Nₘ_r*Wr))/(Δw+Δ*(Wf+Ww+Wr))
-    return Nₘ
-end
-function Calc_Nₘ(Wr::T,Nₘ_f::T,model::CCPHStruct) where {T<:Float64}
-    Nₘ_w = Calc_Nₘ_w(Nₘ_f,model)
-    Nₘ_r = Calc_Nₘ_r(Nₘ_f,model)
-    H,Hₛ,Wf,Ww = model.treesize.H,model.treesize.Hs,model.treesize.Wf,model.treesize.Ww
-    β₁,β₂,z = model.treepar.β₁,model.treepar.β₂,model.treepar.z
-
-    Nₘ = Calc_Nₘ(H,Hₛ,Wf,Ww,Wr,Nₘ_f,Nₘ_w,Nₘ_r,β₁,β₂,z)
-    return Nₘ
-end
-function Calc_Nₘ(Nₘ_f::T,model::CCPHStruct) where {T<:Float64}
-    Nₘ = Calc_Nₘ(0.0,Nₘ_f::T,model::CCPHStruct)
-    return Nₘ
-end
+Calc_Nₐ(Nₘ_f::Real,model::CCPHStruct) = model.treepar.LMA*Nₘ_f
 
 #Calcualte the ration between Nₘ and Nₘ_f
 function Calc_Δₘ(H::T,Hₛ::T,Wf::T,Ww::T,Wr::T,r_w::T,r_r::T,β₁::T,β₂::T,z::T) where {T<:Float64}
@@ -78,86 +56,31 @@ function Calc_Δₘ(model::CCPHStruct)
     return Δₘ
 end
 
-#
-function Calc_a_r1(Nₘ_f::T,Δₘ::T,Tᵣ::T,rₘ::T,y::T,rᵣ::T) where {T<:Float64}   
-    a_r1 = (rᵣ-Δₘ)/Tᵣ-y*Δₘ*rₘ*rᵣ*Nₘ_f
-    return a_r1
-end
-function Calc_a_r1(Nₘ_f::T,Δₘ::T,model::CCPHStruct) where {T<:Float64}
-    Tᵣ,rₘ,y,rᵣ =  model.treepar.Tr,model.treepar.rₘ,model.treepar.y,model.treepar.rR
-    a_r1 = Calc_a_r1(Nₘ_f,Δₘ,Tᵣ,rₘ,y,rᵣ)
-    return a_r1
-end
-function range_a_r1(Nₘ_f::Float64,model::CCPHStruct)
-    Δₘ₀ = Calc_Δₘ(model) 
-    rᵣ = model.treepar.rR
-    a_r1_range = (Calc_a_r1(Nₘ_f,rᵣ,model),Calc_a_r1(Nₘ_f,Δₘ₀,model))
-    return a_r1_range
-end
-#
-function Calc_a_r0(P::T,Δₘ::T,Wf::T,Ww::T,Nₘ_f::T,Nₘ_w::T,rₘ::T,y::T,Tᵣ::T) where {T<:Float64} 
-    a_r0 = y*(P-rₘ*Nₘ_f*Wf-rₘ*Nₘ_w*Ww)*Δₘ+Wf*(1-Δₘ)/Tᵣ
-    return a_r0
-end
-function Calc_a_r0(P::T,Δₘ::T,Nₘ_f::T,model::CCPHStruct) where {T<:Float64} 
-    Wf,Ww = model.treesize.Wf,model.treesize.Ww
-    rₘ,y,Tᵣ = model.treepar.rₘ,model.treepar.y,model.treepar.Tr
+#Parameter values for drawing the growth constraint function
+function Calc_Par(P::T,Nₘ_f::T,model::CCPHStruct) where {T<:Real} 
+    H,Hₛ,Wf,Ww,N = model.treesize.H,model.treesize.Hs,model.treesize.Wf,model.treesize.Ww,model.treesize.N
+    β₁,β₂,z,Nₛ = model.treepar.β₁,model.treepar.β₂,model.treepar.z,model.treepar.Nₛ
+    Tᵣ,rₘ,y = model.treepar.Tr,model.treepar.rₘ,model.treepar.y
     Nₘ_w = Calc_Nₘ_w(Nₘ_f,model)
-    a_r0 = Calc_a_r0(P,Δₘ,Wf,Ww,Nₘ_f,Nₘ_w,rₘ,y,Tᵣ)
-    return a_r0
+    NPPΔ = y*(P-rₘ*Nₘ_f*Wf-rₘ*Nₘ_w*Ww)
+    H₁ = z/(H-Hₛ)
+    H₂ = β₁*Ww/(β₁*H+β₂*Hₛ)
+    return (NPPΔ,Nₘ_f,rₘ,Wf,Ww,H₁,H₂,Nₛ,N)
 end
-function range_a_r0(P::T,Nₘ_f::T,model::CCPHStruct) where {T<:Float64}
-    Δₘ₀ = Calc_Δₘ(model) 
-    rᵣ = model.treepar.rR
-    a_r0_range = (Calc_a_r0(P,Δₘ₀,Nₘ_f,model),Calc_a_r0(P,rᵣ,Nₘ_f,model))
-    return a_r0_range
-end
-
-function Calc_crit(P::T,Wf::T,Ww::T,Nₘ_f::T,Nₘ_w::T,rₘ::T) where {T<:Float64}
-    crit = P-rₘ*Nₘ_f*Wf-rₘ*Nₘ_w*Ww
-    return crit
-end
-function Calc_crit(P::T,Nₘ_f::T,model::CCPHStruct) where {T<:Float64}
-    Wf,Ww = model.treesize.Wf,model.treesize.Ww
-    rₘ = model.treepar.rₘ
-    Nₘ_w = Calc_Nₘ_w(Nₘ_f,model)
-    crit = Calc_crit(P,Wf,Ww,Nₘ_f,Nₘ_w,rₘ)
-    return crit
-end
-
-#Nₘ_f>Crit guaranteed solution
-function Calc_Nₘ_f_crit(Δₘ₀::T,Tᵣ::T,rₘ::T,y::T,rᵣ::T) where {T<:Float64}  
-    Nₘ_f_crit = (rᵣ-Δₘ₀)/(Tᵣ*y*Δₘ₀*rₘ*rᵣ)
-    return Nₘ_f_crit
-end
-function Calc_Nₘ_f_crit(Δₘ₀::Float64,model::CCPHStruct)
-    Tᵣ,rₘ,y,rᵣ = model.treepar.Tr,model.treepar.rₘ,model.treepar.y,model.treepar.rR
-
-    Nₘ_f_crit = Calc_Nₘ_f_crit(Δₘ₀,Tᵣ,rₘ,y,rᵣ)
-    return Nₘ_f_crit
-end
-function Calc_Nₘ_f_crit(model::CCPHStruct)
-    Δₘ₀ = Calc_Δₘ(model)
-    Tᵣ,rₘ,y,rᵣ = model.treepar.Tr,model.treepar.rₘ,model.treepar.y,model.treepar.rR
-
-    Nₘ_f_crit = Calc_Nₘ_f_crit(Δₘ₀,Tᵣ,rₘ,y,rᵣ)
-    return Nₘ_f_crit
-end
-
 
 #Calculate total maintenance respiration
-function Calc_Rₘ(Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,Wf::T,Ww::T,Wr::T,model::CCPHStruct) where {T<:Float64}
+function Calc_Rₘ(Nₘ_f::S,Nₘ_w::S,Nₘ_r::S,Wf::T,Ww::T,Wr::S,model::CCPHStruct) where {S<:Real,T<:Float64}
     Rₘ = model.treepar.rₘ*(Nₘ_f*Wf+Nₘ_w*Ww+Nₘ_r*Wr)
     return Rₘ
 end
 
-Calc_NPP(P::T,Rₘ::T,model::CCPHStruct) where {T<:Float64} = model.treepar.y*(P-Rₘ)
+Calc_NPP(P::T,Rₘ::T,model::CCPHStruct) where {T<:Real} = model.treepar.y*(P-Rₘ)
 
 #Foliage and fine root time depednent senescence
-Calc_S_fr(Wf::T,Wr::T,model::CCPHStruct) where {T<:Float64} = Wf/model.treepar.Tf+Wr/model.treepar.Tr
+Calc_S_fr(Wf::T,Wr::S,model::CCPHStruct) where {S<:Real,T<:Float64} = Wf/model.treepar.Tf+Wr/model.treepar.Tr
 
 #Tree height time derivative
-function Calc_dH(NPP::T,S::T,Wf::T,Ww::T,Wr::T,H::T,Hs::T,model::CCPHStruct) where {T<:Float64}
+function Calc_dH(NPP::W,S::W,Wf::T,Ww::T,Wr::W,H::T,Hs::T,model::CCPHStruct) where {W<:Real,T<:Float64}
     dH = (NPP-S)/( model.treepar.β₁*Ww/(model.treepar.β₁*H+model.treepar.β₂*Hs)+
     model.treepar.z*Wf/(H-Hs)+
     model.treepar.z*Ww/(H-Hs)+
@@ -167,7 +90,7 @@ function Calc_dH(NPP::T,S::T,Wf::T,Ww::T,Wr::T,H::T,Hs::T,model::CCPHStruct) whe
 end
 
 #Function for calcualting fine root to sapwood area ratio based on carbon and nitrogen constraints
-function Find_αr(Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,P::T,model::CCPHStruct) where {T<:Float64}
+function Find_αr(Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,P::T,model::CCPHStruct) where {T<:Real}
     γC0 = model.treepar.y*(P-model.treepar.rₘ*(Nₘ_f*model.treesize.Wf+Nₘ_w*model.treesize.Ww))-model.treesize.Wf/model.treepar.Tf
     γC1 = model.treepar.y*model.treepar.rₘ*Nₘ_r*model.treesize.As+model.treesize.As/model.treepar.Tr
     γC2 = model.treepar.β₁*model.treesize.Ww/(model.treepar.β₁*model.treesize.H+model.treepar.β₂*model.treesize.Hs)+
@@ -190,22 +113,22 @@ function Find_αr(Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,P::T,model::CCPHStruct) where {T
     θ₃ = (γN1*γC3-γC1*γN3)*γU2
 
     if isnan(θ₀)||isnan(θ₁)||isnan(θ₂)||isnan(θ₃)
-        error("Polynomial coefficients contains NaN")
+        error("Find_αr: Polynomial coefficients contains NaN")
     end
     if isinf(θ₀)||isinf(θ₁)||isinf(θ₂)||isinf(θ₃)
-        error("Polynomial coefficients contains ∞")
+        error("Find_αr: Polynomial coefficients contains ∞")
     end
     
     αr_vec = solvecubic(θ₃, θ₂, θ₁, θ₀)     
     filter!(x->isnan(x)==false&&isinf(x)==false&&isreal(x)&&x>0.0,αr_vec)   
 
-    isempty(αr_vec)==false||error("No feasible αr: Nₘ_f=$(Nₘ_f), Crit=$(Calc_crit(P,Nₘ_f,model)), a_r0∈$(range_a_r0(P,Nₘ_f,model)), a_r1∈$(range_a_r1(Nₘ_f,model))")    
+    isempty(αr_vec)==false||error("Find_αr: No feasible αr: (NPPΔ,Nₘ_f,rₘ,Wf,Ww,H₁,H₂,Nₛ,N)=$(Calc_Par(P,Nₘ_f,model))")    
 
     return αr_vec
 end
 
 #Calcualte gain (nett carbon gain minus fine root growth, performance measure)
-function Gain_fun(αr::T,K_cost::T,Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,P::T,model::CCPHStruct) where {T<:Float64}
+function Gain_fun(αr::T,K_cost::T,Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,P::T,model::CCPHStruct) where {T<:Real}
     #Fine root mass
     Wr = model.treesize.As*αr
     
@@ -228,7 +151,7 @@ function Gain_fun(αr::T,K_cost::T,Nₘ_f::T,Nₘ_w::T,Nₘ_r::T,P::T,model::CCP
 end
 
 #Run the Coupled Canopy Photosynthesis and Hydraulics model
-function CCPH_run(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where {T<:Float64}    
+function CCPH_run(gₛ::S,Nₘ_f::S,growthlength::T,model::CCPHStruct) where {S<:Real,T<:Float64}    
     #Calculate per sapwood mass nitrogen concentration    
     Nₘ_w = Calc_Nₘ_w(Nₘ_f,model)
     #Calcualte per fine roots mass nitrogen concentration       
@@ -264,8 +187,63 @@ function CCPH_run(gₛ::T,Nₘ_f::T,growthlength::T,model::CCPHStruct) where {T<
     return modeloutput
 end
 
-function Trait_objective_fun(x::Array{T,1},growthlength::T,model::CCPHStruct) where {T<:Float64} 
+#Nₘ_f<Nₘ_f_pos guarantees solution to Find_αr 
+function Calc_Nₘ_f_pos(model::CCPHStruct)
+    Δₘ₀ = Calc_Δₘ(model)
+    Wf,Ww = model.treesize.Wf,model.treesize.Ww
+    Tf,rₘ,y,rW = model.treepar.Tf,model.treepar.rₘ,model.treepar.y,model.treepar.rW
+
+    Nₘ_f_pos = Wf*(1-Δₘ₀)/(Tf*y*rₘ*Δₘ₀*(Wf+rW*Ww))
+    return Nₘ_f_pos
+end
+
+#Calcualte Δ. Δ>0 guarantees a solution for Find_αr
+function Calc_Δ(x::S,growthlength::T,model::CCPHStruct) where {S<:AbstractArray,T<:Float64}
     gₛ,Nₘ_f = x
+    Wf,Ww = model.treesize.Wf,model.treesize.Ww
+    #Calculate per sapwood mass nitrogen concentration    
+    Nₘ_w = Calc_Nₘ_w(Nₘ_f,model)
+    #Calcualte per fine roots mass nitrogen concentration       
+    Nₘ_r = Calc_Nₘ_r(Nₘ_f,model)
+    #Calcualte per leaf area nitrogen concentration    
+    Nₐ = Calc_Nₐ(Nₘ_f,model)
+    #Calculate Jmax
+    Jmax = Calc_Jmax(Nₐ,model.treepar.a_Jmax,model.treepar.b_Jmax,model.photopar.b_Jmax,model.treepar.Xₜ)    
+    #Quantum yield
+    model.photopar.α = Calc_α(model.treepar.Xₜ,model.treepar.α_max)
+    #Irradiance incident on a leaf at canopy top
+    Iᵢ = Calc_Iᵢ(model.env.I₀,model)
+    #Calculate LAI 
+    LAI = Calc_LAI(model)
+    #calcualte total conductance
+    gₜ = Calc_gₜ(gₛ,model)
+    #Calculate per tree carbon assimilation
+    P = GPP(gₜ,Iᵢ,Jmax,LAI,growthlength,model)  
+    Δₘ₀ = Calc_Δₘ(model) 
+    Δ = model.treepar.y*(P-model.treepar.rₘ*(Nₘ_f*Wf+Nₘ_w*Ww))*Δₘ₀+Wf*(1-Δₘ₀)/model.treepar.Tf
+    
+    return Δ
+end
+#Calculate trait optimization constraint
+con!(c::S,x::S,growthlength::T,model::CCPHStruct) where {S<:AbstractArray,T<:Float64} = 
+(c[1] = Calc_Δ(x,growthlength,model);c)
+#Calculate trait optimization constraint Jacobian
+function con_J!(J::AbstractMatrix,x::S,growthlength::T,model::CCPHStruct) where {S<:AbstractArray,T<:Float64}
+    J[1,1],J[1,2] = ForwardDiff.gradient(y->Calc_Δ(y,growthlength,model),x)
+    J
+end
+#Calculate trait optimization constraint Hessian
+function con_H!(H::AbstractMatrix,x::S,λ::S,growthlength::T,model::CCPHStruct) where {S<:AbstractArray,T<:Float64}
+    H_temp = ForwardDiff.hessian(y->Calc_Δ(y,growthlength,model),x)
+    H[1,1] += λ[1]*H_temp[1,1]
+    H[1,2] += λ[1]*H_temp[1,2]
+    H[2,1] += λ[1]*H_temp[2,1]
+    H[2,2] += λ[1]*H_temp[2,2]
+    H    
+end
+
+function Trait_objective_fun(x::S,growthlength::T,model::CCPHStruct) where {S<:AbstractArray,T<:Float64} 
+    gₛ,Nₘ_f = x    
 
     modeloutput = CCPH_run(gₛ,Nₘ_f,growthlength,model)
 
@@ -277,21 +255,30 @@ function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
     gₛ_guess::T=0.02,gₛ_lim_lo::T=0.001,gₛ_lim_hi::T=0.5,
     Nₘ_f_guess::T=0.012,Nₘ_f_lim_lo::T=0.001,Nₘ_f_lim_hi::T=0.05) where {T<:Float64}      
   
-    x0 = [gₛ_guess, Nₘ_f_guess]    
+    Nₘ_f_pos = Calc_Nₘ_f_pos(model)
+
+    x0 = [gₛ_guess, min(Nₘ_f_guess,Nₘ_f_pos)]    
   
-    lower = [gₛ_lim_lo, Nₘ_f_lim_lo]   
-    upper = [gₛ_lim_hi, Nₘ_f_lim_hi]
-  
-    inner_optimizer = Optim.BFGS(linesearch=Optim.LineSearches.BackTracking())   
+    lower = [gₛ_lim_lo, min(Nₘ_f_lim_lo,Nₘ_f_pos*0.8)]   
+    upper = [min(gₛ_lim_hi,0.5), Nₘ_f_lim_hi] 
+    lc = [0.0]; uc = [Inf] 
+
+    df = Optim.TwiceDifferentiable(x->Trait_objective_fun(x,growthlength,model),x0;autodiff = :forward)   
     
-    opt_trait = Optim.optimize(x->Trait_objective_fun(x,growthlength,model),
-    lower,upper,x0,Optim.Fminbox(inner_optimizer))
+    dfc = Optim.TwiceDifferentiableConstraints((c,x)->con!(c,x,growthlength,model),
+    (J,x)->con_J!(J,x,growthlength,model),
+    (H,x,λ)->con_H!(H,x,λ,growthlength,model),
+    lower,upper,lc,uc)  
+
+    option = Optim.Options(allow_f_increases = true, successive_f_tol = 2,f_tol=10^-6,time_limit=30.0)
+
+    opt_trait = Optim.optimize(df, dfc, x0, Optim.IPNewton(),option)
   
     Optim.converged(opt_trait)||error("No optimal traits could be found")    
     
     gₛ_opt = opt_trait.minimizer[1]
-    Nₘ_f_opt = opt_trait.minimizer[2]
-  
+    Nₘ_f_opt = opt_trait.minimizer[2]    
+    
     return gₛ_opt,Nₘ_f_opt
 end
 

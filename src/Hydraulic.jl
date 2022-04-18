@@ -1,18 +1,18 @@
 #vulnerability curve
-Pfun(ψ::T,ψ₅₀::T,b::T) where {T<:Float64} = (1/2)^(ψ/ψ₅₀)^b
+Pfun(ψ::S,ψ₅₀::T,b::T) where {S<:Real,T<:Float64} = (1/2)^(ψ/ψ₅₀)^b
 
 #Invers vulnerability curve
 Pfunᵢₙᵥ(Pval::T,ψ₅₀::T,b::T) where {T<:Float64} = ψ₅₀*(log(Pval)/log(0.5))^(1/b)
 
 #The integral of Pfun from ψ to -∞
-Pintlim(ψ::T,ψ₅₀::T,b::T) where {T<:Float64} = CCPH.Pfun(ψ,ψ₅₀,b)*ψ+
+Pintlim(ψ::S,ψ₅₀::T,b::T) where {S<:Real,T<:Float64} = CCPH.Pfun(ψ,ψ₅₀,b)*ψ+
 abs(ψ₅₀)/log(2)^(1/b)*SpecialFunctions.gamma((1+b)/b,log(2)*(ψ/ψ₅₀)^b)
 
 #The integral of Pfun from the pre-dawn canopy water potential ψ_cm to the canopy water potential ψ_c 
-Pint(ψ_c::T,ψ_cm::T,ψ₅₀::T,b::T) where {T<:Float64} = Pintlim(ψ_cm,ψ₅₀,b)-Pintlim(ψ_c,ψ₅₀,b)
+Pint(ψ_c::S,ψ_cm::T,ψ₅₀::T,b::T) where {S<:Real,T<:Float64} = Pintlim(ψ_cm,ψ₅₀,b)-Pintlim(ψ_c,ψ₅₀,b)
 
 #Fix-point equation for calculating the xylem conductance Kₓₗ=Kₓₗ₀*x
-Ptarget(x::T,Kₓₗ₀::T,E::T,ψ_cm::T,ψ₅₀::T,b::T) where {T<:Float64} = Pint(ψ_cm-E/(Kₓₗ₀*x),ψ_cm,ψ₅₀,b)/(E/(Kₓₗ₀*x))
+Ptarget(x::W,Kₓₗ₀::T,E::S,ψ_cm::T,ψ₅₀::T,b::T) where {S<:Real,W<:Real,T<:Float64} = Pint(ψ_cm-E/(Kₓₗ₀*x),ψ_cm,ψ₅₀,b)/(E/(Kₓₗ₀*x))
 
 #Effective saturation 
 CalcSₑ(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006) where {T<:Float64} = (θₛ-θᵣ)/(θₛₐₜ-θᵣ)
@@ -31,7 +31,7 @@ function Re_Kₛᵣfun(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,p::T=4.66) wh
 end
 
 #Calculate canopy conductance
-function Calc_K_cost(gₛ::T,model::CCPHStruct) where {T<:Float64}
+function Calc_K_cost(gₛ::T,model::CCPHStruct) where {T<:Real}
     ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.θₛ
 
     #Calculate tree height
