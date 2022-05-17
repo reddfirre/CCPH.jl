@@ -270,7 +270,8 @@ function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
     (H,x,λ)->con_H!(H,x,λ,growthlength,model),
     lower,upper,lc,uc)  
 
-    option = Optim.Options(allow_f_increases = true, successive_f_tol = 2,f_tol=10^-6,time_limit=30.0)
+    option = Optim.Options(allow_f_increases=true,successive_f_tol=2,
+    f_tol=10^-6,time_limit=30.0,iterations=600)
 
     opt_trait = Optim.optimize(df, dfc, x0, Optim.IPNewton(),option)
   
