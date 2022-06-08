@@ -33,7 +33,7 @@ Calc_Nₘ_r(Nₘ_f::Real,model::CCPHStruct) = model.treepar.rR*Nₘ_f
 #Calcualte per leaf area nitrogen concentration
 Calc_Nₐ(Nₘ_f::Real,model::CCPHStruct) = model.treepar.LMA*Nₘ_f
 
-#Calcualte the ration between Nₘ and Nₘ_f
+#Calcualte the ratio between Nₘ and Nₘ_f
 function Calc_Δₘ(H::T,Hₛ::T,Wf::T,Ww::T,Wr::T,r_w::T,r_r::T,β₁::T,β₂::T,z::T) where {T<:Float64}
     Δ = z/(H-Hₛ)
     Δw = β₁*Ww/(β₁*H+β₂*Hₛ)
@@ -353,7 +353,8 @@ function Init_weather_par!(i::Integer,model::CCPHStruct,weatherts::WeatherTS,pho
     model.env.Tₐ = weatherts.temp[i]
     PhotoPar!(model.photopar,photo_kinetic,weatherts.temp[i])
     model.treepar.Xₜ = weatherts.acclimation_fac[i] #Account for acclimation 
-
+    model.treepar.rₘ = model.treepar.rₘ_ref*exp(log(model.treepar.Q₁₀_rₘ)/10*(model.env.Tₐ-model.treepar.T_rₘ_ref)) #Calcualte respiraiton rate at current air temperature
+    
     return growthlength,step_length
 end
 

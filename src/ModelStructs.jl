@@ -137,7 +137,7 @@ mutable struct TreePar{T<:Float64}
     y::T #Conversion efficiency of C to biomass (includes growth respiration)
     z::T #Scaling exponent As∝(H-Hs)ᶻ
     Nₛ::T #Maximum N uptake per fine root mass (Kg N Kg⁻¹ Wr)
-    rₘ::T #Specific Nitrogen maintenance respiration rate (Kg⁻¹ N year⁻¹)
+    rₘ::T #Specific Nitrogen maintenance respiration rate (C Kg⁻¹ N Kg⁻¹ year⁻¹)
     k::T #Light extinction coefficient (-)
     m::T #Average leaf transmittance (-)
     a_Jmax::T #Slope of the Nitrogen per leaf area (Nₐ)-Jmaxₒₚₜ line (mol m⁻² leaf s⁻¹ Nₐ⁻¹)
@@ -149,12 +149,16 @@ mutable struct TreePar{T<:Float64}
     r_gₛ::T #total leaf conductance (stomatal+mesophyll) to stomatal conductance (gₜ/gₛ)
     Xₜ::T #Factor [0,1] accounting for the delayed effect of temperature on gross primary production (-) 
     α_max::T #Seasonal maximum quantum yield (m² s mol)
+    rₘ_ref::T #Reference specific Nitrogen maintenance respiration rate (Kg⁻¹ N year⁻¹)
+    T_rₘ_ref::T #Reference temperature for specific Nitrogen maintenance respiration rate (°C)
+    Q₁₀_rₘ::T #Temperature coefficient of specific Nitrogen maintenance respiration rate (-)
 end
 #Standard values
 TreePar(;αf::T=460.0,ρw::T=400.0,β₁::T=1.27,β₂::T=-0.27,Tf::T=3.33,Tr::T=1.25,y::T=1.54,z::T=1.86,
 Nₛ::T=0.04,rₘ::T=24.0,k::T=0.52,m::T=0.05,a_Jmax::T=0.033,b_Jmax::T=-1.1e-5,LMA::T=0.256
-,Kr::T = 0.35,rW::T = 0.07,rR::T = 0.6,r_gₛ::T = 0.42,Xₜ::T = 1.0,α_max::T = 0.36) where {T<:Float64}  = 
-TreePar(αf,ρw,β₁,β₂,Tf,Tr,y,z,Nₛ,rₘ,k,m,a_Jmax,b_Jmax,LMA,Kr,rW,rR,r_gₛ,Xₜ,α_max)
+,Kr::T = 0.35,rW::T = 0.07,rR::T = 0.6,r_gₛ::T = 0.42,Xₜ::T = 1.0,α_max::T = 0.36,
+rₘ_ref::T = 24.0,T_rₘ_ref::T = 11.8,Q₁₀_rₘ = 2.0) where {T<:Float64}  = 
+TreePar(αf,ρw,β₁,β₂,Tf,Tr,y,z,Nₛ,rₘ,k,m,a_Jmax,b_Jmax,LMA,Kr,rW,rR,r_gₛ,Xₜ,α_max,rₘ_ref,T_rₘ_ref,Q₁₀_rₘ)
 
 #Parameteres used in the Hydraulics model
 mutable struct HydraulicsPar{T<:Float64}
