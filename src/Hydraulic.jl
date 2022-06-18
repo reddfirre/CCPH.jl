@@ -30,14 +30,27 @@ function Re_Kₛᵣfun(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,p::T=4.66) wh
     return Sₑ^p
 end
 
-#Calculate canopy conductance
-function Calc_K_cost(gₛ::T,model::CCPHStruct) where {T<:Real}
-    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.θₛ
+#Calculate transpiration E (mol H₂O m² leaf area s⁻¹)
+function calc_E(gₛ::S,
+    VPD::T,
+    P::T;
+    cons::Constants=Constants()) where {T<:Real,S<:Real}  
 
-    #Calculate tree height
-    H = model.treesize.H
-    #Calculate transpiration    
-    E = 1.6*gₛ*model.env.VPD/model.env.P
+    E = cons.r*gₛ*VPD/P
+    return E
+end
+
+#Calculate canopy conductance
+function Calc_K_cost(gₛ::S,
+    H::T,
+    hydPar::HydraulicsPar,
+    env::EnvironmentStruct,
+    cons::Constants) where {T<:Real,S<:Real}
+
+    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = hydPar.ψ₅₀,hydPar.b,hydPar.Kₓₗ₀,cons.g,cons.ρ_H2O,env.θₛ
+    
+    #Calculate transpiration  
+    E = calc_E(gₛ,env.VPD,env.P;cons=cons)
     #Caluclate soil water potential
     ψₛ = θₛ2ψₛ(θₛ)      
 
@@ -53,6 +66,15 @@ function Calc_K_cost(gₛ::T,model::CCPHStruct) where {T<:Real}
     catch
         error("K_cost failed: gₛ=$(gₛ), E=$(E), Kₓₗ₀=$(Kₓₗ₀), ψₛ_g =$(ψₛ_g)")
     end      
+end
+function Calc_K_cost(gₛ::T,model::CCPHStruct) where {T<:Real}
+    
+    #Calculate tree height
+    H = model.treesize.H
+
+    K_cost, Kₓₗ, ψ_c = Calc_K_cost(gₛ,H,model.hydPar,model.env,model.cons) 
+
+    return K_cost, Kₓₗ, ψ_c     
 end
 
 #Calculate the stomatal conductance (gₛ/E) such that Pfun(ψ_target,ψ₅₀,b)=Pval and E = Pint(ψ_target,ψₛ_g,ψ₅₀,b)
