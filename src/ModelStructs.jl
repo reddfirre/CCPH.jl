@@ -183,12 +183,15 @@ end
 
 #Struct collecting output from the Coupled Canopy Photosynthesis and Hydraulic model
 mutable struct CCPHOutput{T<:Real}
-    P::T
-    αr::T
-    ψ_c::T
-    Kₓₗ::T
-    K_cost::T
-    Gain::T
+    P::T #per tree canopy gross primary production (kg C year⁻¹ tree⁻¹)
+    αr::T #root to foliage ratio (-) [not in use]
+    ψ_c::T #leaf water potential (MPa)
+    Kₓₗ::T #root-to-canopy hydraulic conductance (mol m⁻² leaf s⁻¹ MPa⁻¹)
+    K_cost::T #ratio between the root-canopy conductance and the maximal conductance (-), i.e., K_cost=Kₓₗ/Kₓₗ₀
+    Gain::T #trait performance measure (mol C m⁻² leaf area s⁻¹)
+    cᵢ::T #intercellular carbon dioxide concentration (Pa)
+    A::T #leaf C assimilation (mol C m⁻² leaf area s⁻¹)   
+    E::T #leaf transpiration (mol H₂O m² leaf area s⁻¹)
 end
 
 #Struct collecting times series results from growth simulation

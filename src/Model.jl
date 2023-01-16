@@ -52,8 +52,10 @@ function CCPH_run(gₛ::S,Nₘ_f::S,growthlength::T,model::CCPHStruct) where {S<
     J = Calc_J(Iᵢ,Jₘₐₓ,model.photopar.α,model.photopar.θ)
     #Calcualte intercellular carbon dioxide concentration
     cᵢ = calc_opt_cᵢ(gₜ,J,model.photopar,model.env)    
-    #Calculate C assimilation
+    #Calculate leaf C assimilation
     A = calc_Assimilation(gₜ,cᵢ,model.env.P,model.env.Cₐ)
+    #Calculate leaf transpiration
+    E = calc_E(gₛ,model.env.VPD,model.env.P;cons=model.cons)
     #Calculate per tree carbon assimilation
     P = GPP(A,LAI,growthlength,model)
     #Calculate cost factor of hydraulic failure
@@ -63,7 +65,7 @@ function CCPH_run(gₛ::S,Nₘ_f::S,growthlength::T,model::CCPHStruct) where {S<
     #Calculate trait optimization objective function
     gain = calc_gain(A,Jₘₐₓ,N_cost,E_cost)
     αr = zero(eltype(P))
-    modeloutput = CCPHOutput(P,αr,ψ_c,Kₓₗ,E_cost,gain)
+    modeloutput = CCPHOutput(P,αr,ψ_c,Kₓₗ,E_cost,gain,cᵢ,A,E)
 
     return modeloutput
 end
