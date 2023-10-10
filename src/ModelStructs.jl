@@ -168,7 +168,7 @@ mutable struct HydraulicsPar{T<:Float64}
     Kₓₗ₀::T #Maximum xylem-leaf hydraulic conductance (mol m⁻² leaf s⁻¹ MPa⁻¹)     
 end
 #Standard values
-HydraulicsPar(;ψ₅₀::T=-2.0,b::T=2.0,i::T=1.0,Kₓₗ₀::T=0.01) where {T<:Float64} = 
+HydraulicsPar(;ψ₅₀::T=-2.89,b::T=2.15,i::T=1.0,Kₓₗ₀::T=0.01) where {T<:Float64} = 
 HydraulicsPar(ψ₅₀,b,i,Kₓₗ₀)
 
 #Collection of structs used for the Photosynthesis and Hydraulic model
