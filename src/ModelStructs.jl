@@ -7,9 +7,10 @@ mutable struct Constants{T<:Float64}
     ρ_H2O::T #Density water (Kg m⁻³)    
     g::T #gravitational acceleration (m s⁻²)
     r::T #ratio water conductance:co2 conductance (-)    
+    ρ_vapor::T #Density of vapor (Kg m⁻³)
 end
-function Constants(;M_H2O::T=0.018,M_C::T=0.012,ρ_H2O::T=997.0,g::T=9.82,r::T=1.6) where {T<:Float64} 
-    Constants(M_H2O,M_C,ρ_H2O,g,r)
+function Constants(;M_H2O::T=0.018,M_C::T=0.012,ρ_H2O::T=997.0,g::T=9.82,r::T=1.6,ρ_vapor::T=0.749) where {T<:Float64} 
+    Constants(M_H2O,M_C,ρ_H2O,g,r,ρ_vapor)
 end
 
 #Struct containing environmental variables
@@ -136,7 +137,7 @@ mutable struct TreePar{T<:Float64}
     y::T #Conversion efficiency of C to biomass (includes growth respiration)
     z::T #Scaling exponent As∝(H-Hs)ᶻ
     Nₛ::T #Maximum N uptake per fine root mass (Kg N Kg⁻¹ Wr)
-    rₘ::T #Specific Nitrogen maintenance respiration rate (Kg⁻¹ N year⁻¹)
+    rₘ::T #Specific Nitrogen maintenance respiration rate (C Kg⁻¹ N Kg⁻¹ year⁻¹)
     k::T #Light extinction coefficient (-)
     m::T #Average leaf transmittance (-)
     a_Jmax::T #Slope of the Nitrogen per leaf area (Nₐ)-Jmaxₒₚₜ line (mol m⁻² leaf s⁻¹ Nₐ⁻¹)
@@ -147,24 +148,28 @@ mutable struct TreePar{T<:Float64}
     rR::T #Fine root to foliage nitrogen concentration (mass) (-) 
     r_gₛ::T #total leaf conductance (stomatal+mesophyll) to stomatal conductance (gₜ/gₛ)
     Xₜ::T #Factor [0,1] accounting for the delayed effect of temperature on gross primary production (-) 
+    α_max::T #Seasonal maximum quantum yield (m² s mol)
+    rₘ_ref::T #Reference specific Nitrogen maintenance respiration rate (Kg⁻¹ N year⁻¹)
+    T_rₘ_ref::T #Reference temperature for specific Nitrogen maintenance respiration rate (°C)
+    Q₁₀_rₘ::T #Temperature coefficient of specific Nitrogen maintenance respiration rate (-)
 end
 #Standard values
 TreePar(;αf::T=460.0,ρw::T=400.0,β₁::T=1.27,β₂::T=-0.27,Tf::T=3.33,Tr::T=1.25,y::T=1.54,z::T=1.86,
 Nₛ::T=0.04,rₘ::T=24.0,k::T=0.52,m::T=0.05,a_Jmax::T=0.033,b_Jmax::T=-1.1e-5,LMA::T=0.256
-,Kr::T = 0.35,rW::T = 0.07,rR::T = 0.6,r_gₛ::T = 0.42,Xₜ::T = 1.0) where {T<:Float64}  = 
-TreePar(αf,ρw,β₁,β₂,Tf,Tr,y,z,Nₛ,rₘ,k,m,a_Jmax,b_Jmax,LMA,Kr,rW,rR,r_gₛ,Xₜ)
+,Kr::T = 0.35,rW::T = 0.07,rR::T = 0.6,r_gₛ::T = 0.42,Xₜ::T = 1.0,α_max::T = 0.36,
+rₘ_ref::T = 24.0,T_rₘ_ref::T = 11.8,Q₁₀_rₘ = 2.0) where {T<:Float64}  = 
+TreePar(αf,ρw,β₁,β₂,Tf,Tr,y,z,Nₛ,rₘ,k,m,a_Jmax,b_Jmax,LMA,Kr,rW,rR,r_gₛ,Xₜ,α_max,rₘ_ref,T_rₘ_ref,Q₁₀_rₘ)
 
 #Parameteres used in the Hydraulics model
 mutable struct HydraulicsPar{T<:Float64}
     ψ₅₀::T #water potential which causes 50% loss in leaf conductance (MPa)  
     b::T #Sensitivity of leaf conductance to water potential (-)
     i::T #Sensitivity to hydraulic failure
-    Kₓₗ₀::T #Maximum xylem-leaf hydraulic conductance (mol m⁻² leaf s⁻¹ MPa⁻¹)
-    Kₛᵣ₀::T #Maximum soil hydraulic conductance 
+    Kₓₗ₀::T #Maximum xylem-leaf hydraulic conductance (mol m⁻² leaf s⁻¹ MPa⁻¹)     
 end
 #Standard values
-HydraulicsPar(;ψ₅₀::T=-2.0,b::T=2.0,i::T=1.0,Kₓₗ₀::T=0.01,Kₛᵣ₀::T=0.1) where {T<:Float64} = 
-HydraulicsPar(ψ₅₀,b,i,Kₓₗ₀,Kₛᵣ₀)
+HydraulicsPar(;ψ₅₀::T=-2.89,b::T=2.15,i::T=1.0,Kₓₗ₀::T=0.01) where {T<:Float64} = 
+HydraulicsPar(ψ₅₀,b,i,Kₓₗ₀)
 
 #Collection of structs used for the Photosynthesis and Hydraulic model
 mutable struct CCPHStruct
@@ -177,13 +182,16 @@ mutable struct CCPHStruct
 end
 
 #Struct collecting output from the Coupled Canopy Photosynthesis and Hydraulic model
-mutable struct CCPHOutput
-    P::Float64
-    αr::Float64
-    ψ_c::Float64
-    Kₓₗ::Float64
-    K_cost::Float64
-    Gain::Float64
+mutable struct CCPHOutput{T<:Real}
+    P::T #per tree canopy gross primary production (kg C year⁻¹ tree⁻¹)
+    αr::T #root to foliage ratio (-) [not in use]
+    ψ_c::T #leaf water potential (MPa)
+    Kₓₗ::T #root-to-canopy hydraulic conductance (mol m⁻² leaf s⁻¹ MPa⁻¹)
+    K_cost::T #ratio between the root-canopy conductance and the maximal conductance (-), i.e., K_cost=Kₓₗ/Kₓₗ₀
+    Gain::T #trait performance measure (mol C m⁻² leaf area s⁻¹)
+    cᵢ::T #intercellular carbon dioxide concentration (Pa)
+    A::T #leaf C assimilation (mol C m⁻² leaf area s⁻¹)   
+    E::T #leaf transpiration (mol H₂O m² leaf area s⁻¹)
 end
 
 #Struct collecting times series results from growth simulation
@@ -238,4 +246,12 @@ mutable struct WeatherTS{T<:Float64}
     VPD::Array{T,1} #Pa
     θₛ::Array{T,1} #Volumetric soil water content 
     acclimation_fac::Array{T,1} #Factor [0,1] accounting for annual acclimation cycle, see Mäkelä 2004 & 2008  
+end
+
+function EnvironmentStruct(weatherts::WeatherTS,ind::Integer)
+    I₀ = weatherts.PAR[ind] 
+    VPD = weatherts.VPD[ind]  
+    θₛ = weatherts.θₛ[ind]   
+    Tₐ = weatherts.temp[ind]
+    EnvironmentStruct(;I₀=I₀,Tₐ=Tₐ,VPD=VPD,θₛ=θₛ) 
 end

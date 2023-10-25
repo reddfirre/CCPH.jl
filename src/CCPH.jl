@@ -1,6 +1,6 @@
 module CCPH
 #Import packages
-import Dates, Optim, DifferentialEquations
+import Dates, Optim, DifferentialEquations, SpecialFunctions, ForwardDiff
 
 export Constants, EnvironmentStruct, PhotoKineticRates, PhotoPar, PhotoPar!,
 TreeSize, TreePar, HydraulicsPar, CCPHStruct, CCPHOutput, CCPHTS, WeatherTS, CCPH_run,
@@ -12,5 +12,4 @@ include("ModelStructs.jl")
 include("Photosynthesis.jl")
 include("Hydraulic.jl")
 include("Model.jl")
-
 end

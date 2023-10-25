@@ -1,11 +1,54 @@
+#Rate of electron transport
+function Calc_J(Iᵢ::T,Jₘₐₓ::S,α::T,θ::T) where {S<:Real,T<:Float64} 
+    J = (α*Iᵢ+Jₘₐₓ-sqrt(α^2*Iᵢ^2+2*α*Iᵢ*Jₘₐₓ*(1-2*θ)+Jₘₐₓ^2))/(2*θ)
+
+    return J
+end
+#Function for calculating intercellular carbon dioxide concentration  
+function calc_opt_cᵢ(gₜ::S, 
+    cₐ::T,
+    J::S,
+    Γ::T,
+    Pₜₒₜ::T) where {T<:Real,S<:Real}
+    gₜₚ = gₜ/Pₜₒₜ
+    a₀ = J/(4*gₜₚ)*Γ+2*cₐ*Γ
+    a₁ = cₐ-2*Γ-J/(4*gₜₚ)
+    cᵢ = a₁/2+sqrt(a₁^2/4+a₀)
+    Γ<cᵢ<cₐ||error("calc_opt_cᵢ: Γ<cᵢ<cₐ failed")
+    return cᵢ
+end
+function calc_opt_cᵢ(gₜ::T,    
+    J::T,
+    photo::PhotoPar,
+    env::EnvironmentStruct) where {T<:Real}
+
+    Pₜₒₜ,cₐ,Γ = env.P,env.Cₐ,photo.Γ    
+
+    cᵢ = calc_opt_cᵢ(gₜ,cₐ,J,Γ,Pₜₒₜ)
+    return cᵢ
+end
+#Calculate assimilation rate (mol C m⁻² leaf area s⁻¹)
+function calc_Assimilation(gₜ::S,cᵢ::S,Pₜₒₜ::T,cₐ::T) where {T<:Real,S<:Real}
+    A = gₜ*(cₐ-cᵢ)/Pₜₒₜ
+    return A
+end
+#Calculate Vcmax
+function calc_Vcmax(J::S,
+    cᵢ::S,
+    K::T,
+    Γ::T) where {T<:Real,S<:Real}
+    Vcmax = J*(cᵢ+K)/(4*(cᵢ+2*Γ))
+    return Vcmax
+end
+
 #Photosynthesis model for given total conductance (stomatal+mesophyll), gₜ, irradiance incident on the leaf (Iᵢ), 
 #and Jₘₐₓ
-function Farquhar(gₜ::T, Iᵢ::T, Jₘₐₓ::T,photo::PhotoPar,env::EnvironmentStruct) where {T<:Float64}   
+function Farquhar(gₜ::S, Iᵢ::T, Jₘₐₓ::S,photo::PhotoPar,env::EnvironmentStruct) where {S<:Real,T<:Float64}   
     Pₜₒₜ,cₐ = env.P,env.Cₐ
     
     gₜₚ = gₜ/Pₜₒₜ
     
-    J = (photo.α*Iᵢ+Jₘₐₓ-sqrt(photo.α^2*Iᵢ^2+2*photo.α*Iᵢ*Jₘₐₓ*(1-2*photo.θ)+Jₘₐₓ^2))/(2*photo.θ)
+    J = Calc_J(Iᵢ,Jₘₐₓ,photo.α,photo.θ)
     Aⱼ = J/4
 
     #Intercellular carbon dioxide concentration
@@ -17,22 +60,30 @@ function Farquhar(gₜ::T, Iᵢ::T, Jₘₐₓ::T,photo::PhotoPar,env::Environme
     return A, cᵢ
 end
 
-#Calculate the C assimilation (kg C year⁻¹ m⁻² leaf area)
-function C_assimilation(gₜ::T,Iᵢ::T,Jmax::T,growthlength::T,model::CCPHStruct) where {T<:Float64}
-    A = model.treepar.Xₜ*model.cons.M_C*Farquhar(gₜ,Iᵢ,Jmax,model.photopar,model.env)[1]*growthlength
+#Calculate per tree canopy gross primary production (kg C year⁻¹ tree⁻¹)
+GPP(A::S,LAI::T,growthlength::T,model::CCPHStruct) where {S<:Real,T<:Real} = 
+model.cons.M_C*A*growthlength*(1-exp(-model.treepar.k*LAI))/(model.treesize.N*model.treepar.k)
 
-    return A
+#=
+function GPP(gₛ::S,Nₘ_f::S,growthlength::T,model::CCPHStruct) where {S<:Real,T<:Float64}
+    #Calculate Jₘₐₓ
+    Jₘₐₓ = Calc_Jₘₐₓ(Nₘ_f,model.treepar.a_Jmax,model.treepar.b_Jmax,model.photopar.b_Jmax,model.treepar.Xₜ)    
+    #Quantum yield
+    model.photopar.α = Calc_α(model.treepar.Xₜ,model.treepar.α_max)
+    #Irradiance incident on a leaf at canopy top
+    Iᵢ = Calc_Iᵢ(model.env.I₀,model)
+    #Calculate LAI 
+    LAI = Calc_LAI(model)
+    #calcualte total conductance
+    gₜ = Calc_gₜ(gₛ,model)
+    #calculate electron transport
+    J = Calc_J(Iᵢ,Jₘₐₓ,model.photopar.α,model.photopar.θ)
+    #Calcualte intercellular carbon dioxide concentration
+    cᵢ = calc_opt_cᵢ(gₜ,J,model.photopar,model.env)    
+    #Calculate C assimilation
+    A = calc_Assimilation(gₜ,cᵢ,model.env.P,model.env.Cₐ)
+    #Calculate per tree carbon assimilation
+    P =GPP(A,LAI,growthlength,model)
+    return P
 end
-
-#Calculate per tree canopy gross primary production
-GPP(gₜ::T,Iᵢ::T,Jmax::T,LAI::T,growthlength::T,model::CCPHStruct) where {T<:Float64} = 
-C_assimilation(gₜ,Iᵢ,Jmax,growthlength,model)*(1-exp(-model.treepar.k*LAI))/(model.treesize.N*model.treepar.k)
-
-#Calcualte leaf performance at crown base
-function Calc_Δ_leaf(gₜ::T,Iᵢ::T,LAI::T,growthlength::T,Nₘ_f::T,Jmax::T,model::CCPHStruct) where {T<:Float64} 
-    Iᵢ_b = Iᵢ*exp(-model.treepar.k*LAI)
-    Jmax_b = Jmax*exp(-model.treepar.k*LAI)
-    A_b = C_assimilation(gₜ,Iᵢ_b,Jmax_b,growthlength,model)  
-    Δ_leaf = model.treepar.y*(A_b-model.treepar.rₘ*Nₘ_f*model.treepar.LMA)-model.treepar.LMA/model.treepar.Tf #Bottom leaf performance
-    return Δ_leaf
-end
+=#
