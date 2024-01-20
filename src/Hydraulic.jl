@@ -24,12 +24,6 @@ function θₛ2ψₛ(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,λ::T=1.0,ψₐ
     return ψₐ*Sₑ^(-1/λ)
 end    
 
-#Relative Soil conductance (ratio between actual and maximal)
-function Re_Kₛᵣfun(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,p::T=4.66) where {T<:Float64}
-    Sₑ = CalcSₑ(θₛ;θₛₐₜ=θₛₐₜ,θᵣ=θᵣ)
-    return Sₑ^p
-end
-
 #Calculate transpiration E (mol H₂O m² leaf area s⁻¹)
 function calc_E(gₛ::S,
     VPD::T,
@@ -40,7 +34,7 @@ function calc_E(gₛ::S,
     return E
 end
 
-#Calculate canopy conductance
+#Calculate soil-canopy conductance
 function Calc_K_cost(gₛ::S,
     H::T,
     hydPar::HydraulicsPar,

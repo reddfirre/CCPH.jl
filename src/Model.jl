@@ -16,8 +16,6 @@ function Calc_α(xₜ::T,α_max::T) where {T<:Float64}
     return xₜ*α_max
 end
 
-Calc_LAI(model::CCPHStruct) = model.treesize.Wf/model.treepar.LMA*model.treesize.N
-
 #Calculate the irradiance incident on a leaf at irradiance I
 Calc_Iᵢ(I::Float64,model::CCPHStruct) = I*model.treepar.k/(1-model.treepar.m)
 Calc_Iᵢ(I::Float64,treepar::TreePar) = I*treepar.k/(1-treepar.m)
@@ -36,16 +34,14 @@ function calc_gain(A::S,
 end
 
 #Run the Coupled Canopy Photosynthesis and Hydraulics model
-function CCPH_run(gₛ::S,Nₘ_f::S,growthlength::T,model::CCPHStruct) where {S<:Real,T<:Float64}    
+function CCPH_run(gₛ::S,Nₘ_f::S,model::CCPHStruct) where {S<:Real,T<:Float64}    
     
     #Calculate Jₘₐₓ
     Jₘₐₓ = Calc_Jₘₐₓ(Nₘ_f,model.treepar.a_Jmax,model.treepar.b_Jmax,model.photopar.b_Jmax,model.treepar.Xₜ)    
     #Quantum yield
     model.photopar.α = Calc_α(model.treepar.Xₜ,model.treepar.α_max)
     #Irradiance incident on a leaf at canopy top
-    Iᵢ = Calc_Iᵢ(model.env.I₀,model)
-    #Calculate LAI 
-    LAI = Calc_LAI(model)
+    Iᵢ = Calc_Iᵢ(model.env.I₀,model)    
     #calcualte total conductance
     gₜ = Calc_gₜ(gₛ,model)
     #calculate electron transport
@@ -55,17 +51,15 @@ function CCPH_run(gₛ::S,Nₘ_f::S,growthlength::T,model::CCPHStruct) where {S<
     #Calculate leaf C assimilation
     A = calc_Assimilation(gₜ,cᵢ,model.env.P,model.env.Cₐ)
     #Calculate leaf transpiration
-    E = calc_E(gₛ,model.env.VPD,model.env.P;cons=model.cons)
-    #Calculate per tree carbon assimilation
-    P = GPP(A,LAI,growthlength,model)
+    E = calc_E(gₛ,model.env.VPD,model.env.P;cons=model.cons)    
     #Calculate cost factor of hydraulic failure
     E_cost, Kₓₗ, ψ_c = Calc_K_cost(gₛ,model)
     #Carbon cost of nitrogen uptake and protein maintenance 
     N_cost = model.treepar.Nₛ
     #Calculate trait optimization objective function
     gain = calc_gain(A,Jₘₐₓ,N_cost,E_cost)
-    αr = zero(eltype(P))
-    modeloutput = CCPHOutput(P,αr,ψ_c,Kₓₗ,E_cost,gain,cᵢ,A,E)
+    
+    modeloutput = CCPHOutput(ψ_c,Kₓₗ,E_cost,gain,cᵢ,A,E)
 
     return modeloutput
 end
