@@ -143,25 +143,20 @@ mutable struct TreeSize{T<:Float64}
 end
 
 #Struct containing tree and stand parameters
-mutable struct TreePar{T<:Float64}
-    αf::T #Foliage weight to Sapwood area ratio (Kg m⁻²)
-    ρw::T #Sapwood density (Kg m³)
-    y::T #Conversion efficiency of C to biomass (includes growth respiration)    
-    Nₛ::T #Maximum N uptake per fine root mass (Kg N Kg⁻¹ Wr)    
+mutable struct TreePar{T<:Float64}   
+    Nₛ::T #Carbon cost of nitrogen uptake and protein maintenance factor (-)    
     k::T #Light extinction coefficient (-)
     m::T #Average leaf transmittance (-)
     a_Jmax::T #Slope of the Nitrogen per leaf area (Nₐ)-Jmaxₒₚₜ line (mol m⁻² leaf s⁻¹ Nₐ⁻¹)
-    b_Jmax::T #Intercept of the Nitrogen per leaf area (Nₐ)-Jmaxₒₚₜ line (mol m⁻² leaf s⁻¹)
-    LMA::T #Leaf mass area (Kg foliage m⁻² leaf)    
+    b_Jmax::T #Intercept of the Nitrogen per leaf area (Nₐ)-Jmaxₒₚₜ line (mol m⁻² leaf s⁻¹)       
     r_gₛ::T #total leaf conductance (stomatal+mesophyll) to stomatal conductance (gₜ/gₛ)
     Xₜ::T #Factor [0,1] accounting for the delayed effect of temperature on gross primary production (-) 
     α_max::T #Seasonal maximum quantum yield (m² s mol)    
 end
 #Standard values
-TreePar(;αf::T=460.0,ρw::T=400.0,y::T=1.54,
-Nₛ::T=0.04,k::T=0.52,m::T=0.05,a_Jmax::T=0.033,b_Jmax::T=-1.1e-5,LMA::T=0.256
-,r_gₛ::T = 0.42,Xₜ::T = 1.0,α_max::T = 0.36) where {T<:Float64}  = 
-TreePar(αf,ρw,y,Nₛ,k,m,a_Jmax,b_Jmax,LMA,r_gₛ,Xₜ,α_max)
+TreePar(;Nₛ::T=0.04,k::T=0.52,m::T=0.05,a_Jmax::T=0.033,b_Jmax::T=-1.1e-5,
+r_gₛ::T = 0.42,Xₜ::T = 1.0,α_max::T = 0.36) where {T<:Float64}  = 
+TreePar(Nₛ,k,m,a_Jmax,b_Jmax,r_gₛ,Xₜ,α_max)
 
 #Parameteres used in the Hydraulics model
 mutable struct HydraulicsPar{T<:Float64}
