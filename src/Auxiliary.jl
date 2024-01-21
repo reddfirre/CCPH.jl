@@ -93,6 +93,8 @@ SVPₜ(T::AbstractFloat) = 610.94*exp(17.625*T/(243.04+T))
 
 #Vapour-pressure deficit (Pa) at T degree celsius and RH relative humidity (%)
 VPDₜ(T::AbstractFloat,RH::AbstractFloat) = SVPₜ(T)*(1-RH/100)
+#Vapour-pressure deficit (Pa) at T degree celsius and VP vapor pressure (Pa)
+VPDₜ(T::AbstractFloat,VP::AbstractFloat) = SVPₜ(T)-VP
 
 #Calcualte day-light hours
 function daylighthour(L::Real,d::Real)
@@ -112,6 +114,6 @@ end
 #I₀ₜₒₜ, daily total irradiance (estimated from daily total solar radiation) (mol s⁻¹ m⁻²).
 I₀_fun(t::Real,I₀ₜₒₜ::Real,daylength::Real) = π*I₀ₜₒₜ*sin(π*t/daylength)/(2*daylength)
 
-#Calcualte ambient temperature at time t after sunrise (t=0 → sunrise and t=daylength → sunset); Time is given in seconds.
-#(eq. 3 Wang et al. 2014)
-temp_fun(t::Real,T_min::Real,T_max::Real,daylength::Real;a::Real=2*3600) = T_min+(T_max-T_min)*sin(π*t/(daylength+2*a))
+#Calcualte ambient temperature, T, at time t after sunrise (t=0 → sunrise and t=daylength → sunset); Time is given in seconds.
+#(eq. 3 Wang et al. 2014) time lag between the time of maximal temperature and solar noon.
+Tₐ_fun(t::Real,T_min::Real,T_max::Real,daylength::Real;a::Real=2*3600) = T_min+(T_max-T_min)*sin(π*t/(daylength+2*a))

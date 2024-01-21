@@ -15,16 +15,16 @@ Pint(ψ_c::S,ψ_cm::T,ψ₅₀::T,b::T) where {S<:Real,T<:Float64} = Pintlim(ψ_
 Ptarget(x::W,Kₓₗ₀::T,E::S,ψ_cm::T,ψ₅₀::T,b::T) where {S<:Real,W<:Real,T<:Float64} = Pint(ψ_cm-E/(Kₓₗ₀*x),ψ_cm,ψ₅₀,b)/(E/(Kₓₗ₀*x))
 
 #Effective saturation 
-CalcSₑ(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006) where {T<:Float64} = (θₛ-θᵣ)/(θₛₐₜ-θᵣ)
+calcSₑ(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006) where {T<:Float64} = (θₛ-θᵣ)/(θₛₐₜ-θᵣ)
 
 #Soil water content (volumetric) to soil water potential (MPa) (Water retention curve) 
 function θₛ2ψₛ(θₛ::T;θₛₐₜ::T=0.41,θᵣ::T=0.006,λ::T=1.0,ψₐ::T=-0.097706) where {T<:Float64}
-    Sₑ = CalcSₑ(θₛ;θₛₐₜ=θₛₐₜ,θᵣ=θᵣ)
+    Sₑ = calcSₑ(θₛ;θₛₐₜ=θₛₐₜ,θᵣ=θᵣ)
 
     return ψₐ*Sₑ^(-1/λ)
 end    
 
-#Calculate transpiration E (mol H₂O m² leaf area s⁻¹)
+#Calculate leaf transpiration E (mol H₂O m⁻² leaf area s⁻¹)
 function calc_E(gₛ::S,
     VPD::T,
     P::T;
@@ -34,19 +34,25 @@ function calc_E(gₛ::S,
     return E
 end
 
+#Calculate canopy transpiration (mol H₂O m⁻² leaf area s⁻¹)
+function calc_Ec(E::Real,model::CCPHStruct)
+    #E leaf transpiration (mol H₂O m⁻² leaf area s⁻¹)
+    scaling_fac = calc_scaling_fac(model)
+    Ec = E*scaling_fac
+    return Ec
+end
+
 #Calculate soil-canopy conductance
-function Calc_K_cost(gₛ::S,
+function calc_K_cost(gₛ::S,
     H::T,
     hydPar::HydraulicsPar,
     env::EnvironmentStruct,
     cons::Constants) where {T<:Real,S<:Real}
 
-    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = hydPar.ψ₅₀,hydPar.b,hydPar.Kₓₗ₀,cons.g,cons.ρ_H2O,env.θₛ
+    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,ψₛ = hydPar.ψ₅₀,hydPar.b,hydPar.Kₓₗ₀,cons.g,cons.ρ_H2O,env.ψₛ
     
     #Calculate transpiration  
-    E = calc_E(gₛ,env.VPD,env.P;cons=cons)
-    #Caluclate soil water potential
-    ψₛ = θₛ2ψₛ(θₛ)      
+    E = calc_E(gₛ,env.VPD,env.P;cons=cons)    
 
     #Soil water potential adjusted for gravitational pressure (MPa)
     ψₛ_g = ψₛ-H*ρ_H2O*g*10^-6  
@@ -61,18 +67,18 @@ function Calc_K_cost(gₛ::S,
         error("K_cost failed: gₛ=$(gₛ), E=$(E), Kₓₗ₀=$(Kₓₗ₀), ψₛ_g =$(ψₛ_g)")
     end      
 end
-function Calc_K_cost(gₛ::T,model::CCPHStruct) where {T<:Real}
+function calc_K_cost(gₛ::T,model::CCPHStruct) where {T<:Real}
     
     #Calculate tree height
     H = model.treesize.H
 
-    K_cost, Kₓₗ, ψ_c = Calc_K_cost(gₛ,H,model.hydPar,model.env,model.cons) 
+    K_cost, Kₓₗ, ψ_c = calc_K_cost(gₛ,H,model.hydPar,model.env,model.cons) 
 
     return K_cost, Kₓₗ, ψ_c     
 end
 
 #Calculate the stomatal conductance (gₛ/E) such that Pfun(ψ_target,ψ₅₀,b)=Pval and E = Pint(ψ_target,ψₛ_g,ψ₅₀,b)
-function Calc_K_costᵢₙᵥ(Pval::Float64,model::CCPHStruct)
+function calc_K_costᵢₙᵥ(Pval::Float64,model::CCPHStruct)
     ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.θₛ
 
     #Calc target ψ

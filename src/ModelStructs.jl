@@ -13,6 +13,17 @@ function Constants(;M_H2O::T=0.018,M_C::T=0.012,ρ_H2O::T=997.0,g::T=9.82,r::T=1
     Constants(M_H2O,M_C,ρ_H2O,g,r,ρ_vapor)
 end
 
+#Struct containing  function to determine within-day environmental variables
+#time t (time after sunrise); Time must be given in seconds
+mutable struct EnvironmentFunStruct{F<:Function} 
+    I₀::F #Above canopy irradiance (PAR mol m⁻² s⁻¹)
+    Cₐ::F #Ambient carbon dioxide partial pressure (Pa)
+    P::F #Atmospheric pressure (Pa)
+    Tₐ::F #Ambient air tempreture (°C)
+    VPD::F #Vapour-pressure deficit     
+    ψₛ::F #Soil water potential (MPa)  
+end
+
 #Struct containing environmental variables
 mutable struct EnvironmentStruct{T<:Float64} 
     I₀::T #Above canopy irradiance (PAR mol m⁻² s⁻¹)
@@ -20,11 +31,20 @@ mutable struct EnvironmentStruct{T<:Float64}
     P::T #Atmospheric pressure (Pa)
     Tₐ::T #Ambient air tempreture (°C)
     VPD::T #Vapour-pressure deficit     
-    θₛ::T #Soil volumetric water content (-)  
+    ψₛ::T #Soil water potential (MPa)  
 end
 #Standard vaules
 EnvironmentStruct(;I₀::T=820.0*10^-6,Cₐ::T=400.0/10.0,P::T=1.0*10^5,
 Tₐ::T=25.0,VPD::T=800.0,θₛ::T = 0.15) where {T<:Float64} =  EnvironmentStruct(I₀,Cₐ,P,Tₐ,VPD,θₛ)
+function EnvironmentStruct!(t::Real,env::EnvironmentStruct,envfun::EnvironmentFunStruct)
+    env.I₀ = envfun.I₀(t)
+    env.Cₐ = envfun.Cₐ(t)
+    env.P = envfun.P(t)
+    env.Tₐ = envfun.Tₐ(t)
+    env.VPD = envfun.VPD(t)
+    env.ψₛ = envfun.ψₛ(t)
+    return nothing
+end
 
 mutable struct ArrheniusKineticRate{T<:Float64}    
     K_ref::T #Kinetic rate at referance temperature 
@@ -154,7 +174,7 @@ end
 HydraulicsPar(;ψ₅₀::T=-2.89,b::T=2.15,i::T=1.0,Kₓₗ₀::T=0.01) where {T<:Float64} = 
 HydraulicsPar(ψ₅₀,b,i,Kₓₗ₀)
 
-#Collection of structs used for the Photosynthesis and Hydraulic model
+#Collection of structs used for the instantaneous Photosynthesis and Hydraulic model
 mutable struct CCPHStruct
     cons::Constants
     env::EnvironmentStruct
@@ -164,8 +184,8 @@ mutable struct CCPHStruct
     hydPar::HydraulicsPar
 end
 
-#Struct collecting output from the Coupled Canopy Photosynthesis and Hydraulic model
-mutable struct CCPHOutput{T<:Real}    
+#Struct collecting output from the instantaneous Coupled Canopy Photosynthesis and Hydraulic model
+mutable struct CCPHInstOutput{T<:Real}    
     ψ_c::T #leaf water potential (MPa)
     Kₓₗ::T #root-to-canopy hydraulic conductance (mol m⁻² leaf s⁻¹ MPa⁻¹)
     K_cost::T #ratio between the root-canopy conductance and the maximal conductance (-), i.e., K_cost=Kₓₗ/Kₓₗ₀
@@ -173,6 +193,14 @@ mutable struct CCPHOutput{T<:Real}
     cᵢ::T #intercellular carbon dioxide concentration (Pa)
     A::T #leaf C assimilation (mol C m⁻² leaf area s⁻¹)   
     E::T #leaf transpiration (mol H₂O m² leaf area s⁻¹)
+    GPP::T #Above ground vegetation GPP (mol C m⁻² ground area s⁻¹) 
+    Ec::T #Canopy transpiration  (mol H₂O m² ground area s⁻¹) 
+end
+
+mutable struct CCPHOutput{T<:Real} 
+    Gain::T #Leaf performance measure (mol C m⁻² leaf area day⁻¹)
+    GPP::T #Above ground vegetation GPP (g C m⁻² ground day⁻¹)
+    Ec::T #Canopy transpiration (mm day⁻¹)
 end
 
 #Struct collecting times series results from growth simulation

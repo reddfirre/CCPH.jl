@@ -1,5 +1,5 @@
 #Rate of electron transport
-function Calc_J(Iᵢ::T,Jₘₐₓ::S,α::T,θ::T) where {S<:Real,T<:Float64} 
+function calc_J(Iᵢ::T,Jₘₐₓ::S,α::T,θ::T) where {S<:Real,T<:Float64} 
     J = (α*Iᵢ+Jₘₐₓ-sqrt(α^2*Iᵢ^2+2*α*Iᵢ*Jₘₐₓ*(1-2*θ)+Jₘₐₓ^2))/(2*θ)
 
     return J
@@ -25,6 +25,7 @@ function calc_opt_cᵢ(gₜ::T,
     Pₜₒₜ,cₐ,Γ = env.P,env.Cₐ,photo.Γ    
 
     cᵢ = calc_opt_cᵢ(gₜ,cₐ,J,Γ,Pₜₒₜ)
+    
     return cᵢ
 end
 #Calculate instantaneous leaf assimilation rate (mol C m⁻² leaf area s⁻¹)
@@ -41,6 +42,16 @@ function calc_Vcmax(J::S,
     return Vcmax
 end
 
+#Calculate instantaneous above ground vegetation GPP (mol C m⁻² ground area s⁻¹) 
+function calc_GPP(A::Real,model::CCPHStruct)
+    #A leaf C assimilation (mol C m⁻² leaf area s⁻¹)
+    scaling_fac = calc_scaling_fac(model)
+    GPP = A*scaling_fac
+    return GPP
+end
+
+#=
 #Calculate per tree canopy gross primary production (kg C year⁻¹ tree⁻¹)
 GPP(A::S,LAI::T,growthlength::T,model::CCPHStruct) where {S<:Real,T<:Real} = 
 model.cons.M_C*A*growthlength*(1-exp(-model.treepar.k*LAI))/(model.treesize.N*model.treepar.k)
+=#
