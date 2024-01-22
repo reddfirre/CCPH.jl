@@ -89,7 +89,7 @@ function CCPH_run!(gₛ₁::S,gₛ₂::S,Nₘ_f::S,daylength::T,photo_kinetic::P
 
     #Calculate canopy transpiration (mol H₂O m⁻² ground day⁻¹)
     Ec = 2*(modelinstoutput₁.Ec*Δt₁+modelinstoutput₂.Ec*Δt₂)
-    Ec *= 1000*model.cons.M_H2O/model.cons.ρ_vapor #(mm day⁻¹)   
+    Ec *= 1000*model.cons.M_H2O/model.cons.ρ_H2O #(mm day⁻¹)   
 
     #Calculate Leaf performance measure (mol C m⁻² leaf area day⁻¹)
     Gain = 2*(modelinstoutput₁.Gain*Δt₁+modelinstoutput₂.Gain*Δt₂)
@@ -107,27 +107,28 @@ function Objective_fun(x::S,daylength::T,photo_kinetic::PhotoKineticRates,envfun
     return -modeloutput.Gain
 end 
 
-#Find optimal triats
-function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
-    gₛ_guess::T=0.02,gₛ_lim_lo::T=0.001,gₛ_lim_hi::T=0.5,
-    Nₘ_f_guess::T=0.012,Nₘ_f_lim_lo::T=0.001,Nₘ_f_lim_hi::T=0.05) where {T<:Float64}  
+#Find optimal gₛ and Nₘ_f
+function CCPHOpt(daylength::Real,photo_kinetic::PhotoKineticRates,envfun::EnvironmentFunStruct,model::CCPHStruct;
+    gₛ_guess::Real=0.02,gₛ_lim_lo::Real=0.001,gₛ_lim_hi::Real=0.5,
+    Nₘ_f_guess::Real=0.012,Nₘ_f_lim_lo::Real=0.001,Nₘ_f_lim_hi::Real=0.05)
     
-    x0 = [gₛ_guess, Nₘ_f_guess]    
+    x0 = [gₛ_guess, gₛ_guess, Nₘ_f_guess]    
   
-    lower = [gₛ_lim_lo, Nₘ_f_lim_lo]   
-    upper = [min(gₛ_lim_hi,0.5), Nₘ_f_lim_hi] 
+    lower = [gₛ_lim_lo, gₛ_lim_lo, Nₘ_f_lim_lo]   
+    upper = [min(gₛ_lim_hi,0.5), gₛ_lim_hi, Nₘ_f_lim_hi] 
     
-    df = Optim.OnceDifferentiable(x->Trait_objective_fun(x,growthlength,model),x0;autodiff = :forward)   
+    df = Optim.OnceDifferentiable(x->Objective_fun(x,daylength,photo_kinetic,envfun,model),x0;autodiff = :forward)   
     
     inner_optimizer = Optim.BFGS(linesearch = Optim.LineSearches.BackTracking())
     opt_trait = Optim.optimize(df, lower, upper, x0, Optim.Fminbox(inner_optimizer))
   
     Optim.converged(opt_trait)||error("No optimal traits could be found")    
     
-    gₛ_opt = opt_trait.minimizer[1]
-    Nₘ_f_opt = opt_trait.minimizer[2]    
+    gₛ₁_opt = opt_trait.minimizer[1]
+    gₛ₂_opt = opt_trait.minimizer[2]
+    Nₘ_f_opt = opt_trait.minimizer[3]    
     
-    return gₛ_opt,Nₘ_f_opt
+    return gₛ₁_opt,gₛ₂_opt,Nₘ_f_opt
 end
 
 #initiate photo kinetic and environmental variables at time t (time after sunrise. Time in seconds).

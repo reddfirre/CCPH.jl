@@ -15,13 +15,13 @@ end
 
 #Struct containing  function to determine within-day environmental variables
 #time t (time after sunrise); Time must be given in seconds
-mutable struct EnvironmentFunStruct{F<:Function} 
-    I₀::F #Above canopy irradiance (PAR mol m⁻² s⁻¹)
-    Cₐ::F #Ambient carbon dioxide partial pressure (Pa)
-    P::F #Atmospheric pressure (Pa)
-    Tₐ::F #Ambient air tempreture (°C)
-    VPD::F #Vapour-pressure deficit     
-    ψₛ::F #Soil water potential (MPa)  
+mutable struct EnvironmentFunStruct
+    I₀::Function #Above canopy irradiance (PAR mol m⁻² s⁻¹)
+    Cₐ::Function #Ambient carbon dioxide partial pressure (Pa)
+    P::Function #Atmospheric pressure (Pa)
+    Tₐ::Function #Ambient air tempreture (°C)
+    VPD::Function #Vapour-pressure deficit     
+    ψₛ::Function #Soil water potential (MPa)  
 end
 
 #Struct containing environmental variables
@@ -144,7 +144,7 @@ end
 
 #Struct containing tree and stand parameters
 mutable struct TreePar{T<:Float64}   
-    Nₛ::T #Carbon cost of nitrogen uptake and protein maintenance factor (-)    
+    Nₛ::T #Carbon cost factor of nitrogen uptake and protein maintenance (-)    
     k::T #Light extinction coefficient (-)
     m::T #Average leaf transmittance (-)
     a_Jmax::T #Slope of the Nitrogen per leaf area (Nₐ)-Jmaxₒₚₜ line (mol m⁻² leaf s⁻¹ Nₐ⁻¹)
@@ -196,48 +196,6 @@ mutable struct CCPHOutput{T<:Real}
     Gain::T #Leaf performance measure (mol C m⁻² leaf area day⁻¹)
     GPP::T #Above ground vegetation GPP (g C m⁻² ground day⁻¹)
     Ec::T #Canopy transpiration (mm day⁻¹)
-end
-
-#Struct collecting times series results from growth simulation
-mutable struct CCPHTS{T<:Float64}
-    Wf::Array{T,1}
-    Ww::Array{T,1}    
-    H::Array{T,1}
-    Hs::Array{T,1}
-    As::Array{T,1}
-    B::Array{T,1}
-    N::Array{T,1}
-    P::Array{T,1}
-    αr::Array{T,1}
-    ψ_c::Array{T,1}
-    Kₓₗ::Array{T,1}
-    K_cost::Array{T,1}
-    Gain::Array{T,1}
-    gₛ::Array{T,1}
-    Nₘ_f::Array{T,1} 
-    gₛ_crit::Array{T,1}   
-end
-CCPHTS() = CCPHTS(Float64[],Float64[],Float64[],Float64[],Float64[],Float64[],Float64[],Float64[],
-Float64[],Float64[],Float64[],Float64[],Float64[],Float64[],Float64[],Float64[])
-function CCPHTS!(ccphts::CCPHTS,treesize::TreeSize)    
-    push!(ccphts.Wf,treesize.Wf)
-    push!(ccphts.Ww,treesize.Ww)
-    push!(ccphts.H,treesize.H)
-    push!(ccphts.Hs,treesize.Hs)
-    push!(ccphts.As,treesize.As)
-    push!(ccphts.B,treesize.B)
-    push!(ccphts.N,treesize.N)
-end
-function CCPHTS!(ccphts::CCPHTS,modeloutput::CCPHOutput,gₛ::T,Nₘ_f::T,gₛ_crit::T) where {T<:Float64}
-    push!(ccphts.P,modeloutput.P)
-    push!(ccphts.αr,modeloutput.αr)
-    push!(ccphts.ψ_c,modeloutput.ψ_c)
-    push!(ccphts.Kₓₗ,modeloutput.Kₓₗ)
-    push!(ccphts.K_cost,modeloutput.K_cost)
-    push!(ccphts.Gain,modeloutput.Gain)
-    push!(ccphts.gₛ,gₛ)
-    push!(ccphts.Nₘ_f,Nₘ_f)
-    push!(ccphts.gₛ_crit,gₛ_crit)
 end
 
 #Containter for weather related time series

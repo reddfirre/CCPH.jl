@@ -92,9 +92,9 @@ end
 SVPₜ(T::AbstractFloat) = 610.94*exp(17.625*T/(243.04+T))
 
 #Vapour-pressure deficit (Pa) at T degree celsius and RH relative humidity (%)
-VPDₜ(T::AbstractFloat,RH::AbstractFloat) = SVPₜ(T)*(1-RH/100)
+#VPDₜ(T::AbstractFloat,RH::AbstractFloat) = max(SVPₜ(T)*(1-RH/100),0.0)
 #Vapour-pressure deficit (Pa) at T degree celsius and VP vapor pressure (Pa)
-VPDₜ(T::AbstractFloat,VP::AbstractFloat) = SVPₜ(T)-VP
+VPDₜ(T::AbstractFloat,VP::AbstractFloat) = max(SVPₜ(T)-VP,0.0)
 
 #Calcualte day-light hours
 function daylighthour(L::Real,d::Real)
