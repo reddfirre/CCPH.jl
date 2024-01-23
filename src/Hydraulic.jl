@@ -78,21 +78,19 @@ function calc_K_cost(gₛ::T,model::CCPHStruct) where {T<:Real}
 end
 
 #Calculate the stomatal conductance (gₛ/E) such that Pfun(ψ_target,ψ₅₀,b)=Pval and E = Pint(ψ_target,ψₛ_g,ψ₅₀,b)
-function calc_K_costᵢₙᵥ(Pval::Float64,model::CCPHStruct)
-    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,θₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.θₛ
+function calc_K_costᵢₙᵥ(Pval::Real,model::CCPHStruct)
+    ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,ψₛ = model.hydPar.ψ₅₀,model.hydPar.b,model.hydPar.Kₓₗ₀,model.cons.g,model.cons.ρ_H2O,model.env.ψₛ
 
     #Calc target ψ
     ψ_target = Pfunᵢₙᵥ(Pval,ψ₅₀,b)    
     #Calculate tree height
-    H = model.treesize.H    
-    #Caluclate soil water potential
-    ψₛ = θₛ2ψₛ(θₛ)    
+    H = model.treesize.H       
     #Soil water potential adjusted for gravitational pressure (MPa)
     ψₛ_g = ψₛ-H*ρ_H2O*g*10^-6     
     #Calculate target E
     E_target = Kₓₗ₀*Pint(ψ_target,ψₛ_g,ψ₅₀,b)
     #Calcualte target gₛ
-    gₛ_target = E_target*model.env.P/(1.6*model.env.VPD)
+    gₛ_target = E_target*model.env.P/(model.cons.r*model.env.VPD)
 
     return gₛ_target
 end

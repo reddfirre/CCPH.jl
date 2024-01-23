@@ -109,24 +109,31 @@ end
 
 #Find optimal gₛ and Nₘ_f
 function CCPHOpt(daylength::Real,photo_kinetic::PhotoKineticRates,envfun::EnvironmentFunStruct,model::CCPHStruct;
-    gₛ_guess::Real=0.02,gₛ_lim_lo::Real=0.001,gₛ_lim_hi::Real=0.5,
+    gₛ₁_guess::Real=0.02,gₛ₁_lim_lo::Real=0.001,gₛ₁_lim_hi::Real=0.5,
+    gₛ₂_guess::Real=0.02,gₛ₂_lim_lo::Real=0.001,gₛ₂_lim_hi::Real=0.5,
     Nₘ_f_guess::Real=0.012,Nₘ_f_lim_lo::Real=0.001,Nₘ_f_lim_hi::Real=0.05)
     
-    x0 = [gₛ_guess, gₛ_guess, Nₘ_f_guess]    
+    x0 = [gₛ₁_guess, gₛ₂_guess, Nₘ_f_guess]    
   
-    lower = [gₛ_lim_lo, gₛ_lim_lo, Nₘ_f_lim_lo]   
-    upper = [min(gₛ_lim_hi,0.5), gₛ_lim_hi, Nₘ_f_lim_hi] 
+    lower = [gₛ₁_lim_lo, gₛ₂_lim_lo, Nₘ_f_lim_lo]   
+    upper = [gₛ₁_lim_hi, gₛ₂_lim_hi, Nₘ_f_lim_hi] 
     
+    res = BlackBoxOptim.bboptimize(x->Objective_fun(x,daylength,photo_kinetic,envfun,model); SearchRange =[(gₛ₁_lim_lo,gₛ₁_lim_hi),(gₛ₂_lim_lo,gₛ₂_lim_hi),(Nₘ_f_lim_lo,Nₘ_f_lim_hi)])
+    gₛ₁_opt,gₛ₂_opt,Nₘ_f_opt = BlackBoxOptim.best_candidate(res)
+
+    #=
     df = Optim.OnceDifferentiable(x->Objective_fun(x,daylength,photo_kinetic,envfun,model),x0;autodiff = :forward)   
     
     inner_optimizer = Optim.BFGS(linesearch = Optim.LineSearches.BackTracking())
     opt_trait = Optim.optimize(df, lower, upper, x0, Optim.Fminbox(inner_optimizer))
   
-    Optim.converged(opt_trait)||error("No optimal traits could be found")    
+    Optim.converged(opt_trait)||error("No optimal traits could be found") 
+      
     
     gₛ₁_opt = opt_trait.minimizer[1]
     gₛ₂_opt = opt_trait.minimizer[2]
     Nₘ_f_opt = opt_trait.minimizer[3]    
+    =#
     
     return gₛ₁_opt,gₛ₂_opt,Nₘ_f_opt
 end
