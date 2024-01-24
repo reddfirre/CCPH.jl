@@ -181,10 +181,10 @@ function SDM2_get_gₛ_lim!(daylength::Real,model::CCPHStruct,photo_kinetic::Pho
     t₁,t₂,Δt₁,Δt₂ = SDM2_get_time_points(daylength)
     
     CCPH.Init_weather_par!(t₁,model,photo_kinetic,envfun)
-    gₛ₁_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_crit,model)
+    gₛ₁_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_limit,model)
 
     CCPH.Init_weather_par!(t₂,model,photo_kinetic,envfun)
-    gₛ₂_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_crit,model)
+    gₛ₂_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_limit,model)
 
     return gₛ₁_lim_hi,gₛ₂_lim_hi
 end
