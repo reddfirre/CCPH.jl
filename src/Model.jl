@@ -24,6 +24,15 @@ calc_Iᵢ(I::Float64,treepar::TreePar) = I*treepar.k/(1-treepar.m)
 calc_gₜ(gₛ::Real,model::CCPHStruct) = gₛ*model.treepar.r_gₛ
 calc_gₜ(gₛ::Real,treepar::TreePar) = gₛ*treepar.r_gₛ
 
+#Calcualte time points and time intervals to compute a SDM-2 integral approxiation (Wang et al. 2014) 
+function SDM2_get_time_points(daylength::Real)
+    t₁ = daylength*asin(2/π)/(2*π)
+    t₂ = daylength/4+t₁
+    Δt₁ = t₁*2
+    Δt₂ = t₂*2
+    return t₁,t₂,Δt₁,Δt₂
+end
+
 #Calculate instantaneous reward
 function calc_gain(A::S,
     Jₘₐₓ::S,
@@ -34,7 +43,7 @@ function calc_gain(A::S,
 end
 
 #Run the instantaneous Coupled Canopy Photosynthesis and Hydraulics model
-function CCPH_inst_run(gₛ::S,Nₘ_f::S,model::CCPHStruct) where {S<:Real}    
+function CCPH_inst_run(gₛ::S,Nₘ_f::S,model::CCPHStruct;P_crit::Real=0.12) where {S<:Real}    
     
     #Calculate Jₘₐₓ
     Jₘₐₓ = calc_Jₘₐₓ(Nₘ_f,model.treepar.a_Jmax,model.treepar.b_Jmax,model.photopar.b_Jmax,model.treepar.Xₜ)    
@@ -53,7 +62,7 @@ function CCPH_inst_run(gₛ::S,Nₘ_f::S,model::CCPHStruct) where {S<:Real}
     #Calculate leaf transpiration
     E = calc_E(gₛ,model.env.VPD,model.env.P;cons=model.cons)    
     #Calculate cost factor of hydraulic failure
-    E_cost, Kₓₗ, ψ_c = calc_K_cost(gₛ,model)
+    E_cost, Kₓₗ, ψ_c = calc_K_cost(gₛ,model;P_crit=P_crit)
     #Carbon cost of nitrogen uptake and protein maintenance 
     N_cost = model.treepar.Nₛ
     #Calculate trait optimization objective function
@@ -69,19 +78,22 @@ function CCPH_inst_run(gₛ::S,Nₘ_f::S,model::CCPHStruct) where {S<:Real}
 end
 
 #Run the Coupled Canopy Photosynthesis and Hydraulics model to get daily output values
-function CCPH_run!(gₛ₁::S,gₛ₂::S,Nₘ_f::S,daylength::T,photo_kinetic::PhotoKineticRates,envfun::EnvironmentFunStruct,model::CCPHStruct) where {S<:Real,T<:Real}
+function CCPH_run!(gₛ₁::S,
+    gₛ₂::S,
+    Nₘ_f::S,
+    daylength::T,
+    photo_kinetic::PhotoKineticRates,
+    envfun::EnvironmentFunStruct,
+    model::CCPHStruct;P_crit::Real=0.12) where {S<:Real,T<:Real}
     #SDM-2 is used to approximate the time integration from sunrise to sunset (Wang et al. 2014) 
     
-    t₁ = daylength*asin(2/π)/(2*π)
-    t₂ = daylength/4+t₁
-    Δt₁ = t₁*2
-    Δt₂ = t₂*2
+    t₁,t₂,Δt₁,Δt₂ = SDM2_get_time_points(daylength)   
 
     Init_weather_par!(t₁,model,photo_kinetic,envfun)
-    modelinstoutput₁ = CCPH_inst_run(gₛ₁,Nₘ_f,model)
+    modelinstoutput₁ = CCPH_inst_run(gₛ₁,Nₘ_f,model;P_crit=P_crit)
     
     Init_weather_par!(t₂,model,photo_kinetic,envfun)
-    modelinstoutput₂ = CCPH_inst_run(gₛ₂,Nₘ_f,model)
+    modelinstoutput₂ = CCPH_inst_run(gₛ₂,Nₘ_f,model;P_crit=P_crit)
 
     #Calculate above ground vegetation GPP (mol C m⁻² ground area day⁻¹)
     GPP = 2*(modelinstoutput₁.GPP*Δt₁+modelinstoutput₂.GPP*Δt₂)
@@ -99,10 +111,14 @@ function CCPH_run!(gₛ₁::S,gₛ₂::S,Nₘ_f::S,daylength::T,photo_kinetic::P
     return modeloutput
 end   
 
-function Objective_fun(x::S,daylength::T,photo_kinetic::PhotoKineticRates,envfun::EnvironmentFunStruct,model::CCPHStruct) where {S<:AbstractArray,T<:Real} 
+function Objective_fun(x::S,
+    daylength::T,
+    photo_kinetic::PhotoKineticRates,
+    envfun::EnvironmentFunStruct,
+    model::CCPHStruct;P_crit::Real=0.12) where {S<:AbstractArray,T<:Real} 
     gₛ₁,gₛ₂,Nₘ_f = x 
     
-    modeloutput = CCPH_run!(gₛ₁,gₛ₂,Nₘ_f,daylength,photo_kinetic,envfun,model)
+    modeloutput = CCPH_run!(gₛ₁,gₛ₂,Nₘ_f,daylength,photo_kinetic,envfun,model;P_crit=P_crit)
 
     return -modeloutput.Gain
 end 
@@ -111,17 +127,19 @@ end
 function CCPHOpt(daylength::Real,photo_kinetic::PhotoKineticRates,envfun::EnvironmentFunStruct,model::CCPHStruct;
     gₛ₁_guess::Real=0.02,gₛ₁_lim_lo::Real=0.001,gₛ₁_lim_hi::Real=0.5,
     gₛ₂_guess::Real=0.02,gₛ₂_lim_lo::Real=0.001,gₛ₂_lim_hi::Real=0.5,
-    Nₘ_f_guess::Real=0.012,Nₘ_f_lim_lo::Real=0.001,Nₘ_f_lim_hi::Real=0.05)
+    Nₘ_f_guess::Real=0.012,Nₘ_f_lim_lo::Real=0.001,Nₘ_f_lim_hi::Real=0.05,
+    P_crit::Real=0.12)
     
     x0 = [gₛ₁_guess, gₛ₂_guess, Nₘ_f_guess]    
   
     lower = [gₛ₁_lim_lo, gₛ₂_lim_lo, Nₘ_f_lim_lo]   
     upper = [gₛ₁_lim_hi, gₛ₂_lim_hi, Nₘ_f_lim_hi] 
     
-    res = BlackBoxOptim.bboptimize(x->Objective_fun(x,daylength,photo_kinetic,envfun,model); SearchRange =[(gₛ₁_lim_lo,gₛ₁_lim_hi),(gₛ₂_lim_lo,gₛ₂_lim_hi),(Nₘ_f_lim_lo,Nₘ_f_lim_hi)])
+    res = BlackBoxOptim.bboptimize(x->Objective_fun(x,daylength,photo_kinetic,envfun,model;P_crit=P_crit); SearchRange =[(gₛ₁_lim_lo,gₛ₁_lim_hi),(gₛ₂_lim_lo,gₛ₂_lim_hi),(Nₘ_f_lim_lo,Nₘ_f_lim_hi)])
     gₛ₁_opt,gₛ₂_opt,Nₘ_f_opt = BlackBoxOptim.best_candidate(res)
 
     #=
+    #Old optimization routine (Problem with autodiff = :forward)
     df = Optim.OnceDifferentiable(x->Objective_fun(x,daylength,photo_kinetic,envfun,model),x0;autodiff = :forward)   
     
     inner_optimizer = Optim.BFGS(linesearch = Optim.LineSearches.BackTracking())
@@ -156,4 +174,17 @@ function Init_weather_par!(i::Integer,model::CCPHStruct,weatherts::WeatherTS,pho
     model.treepar.Xₜ = weatherts.acclimation_fac[i] #Account for acclimation 
         
     return growthlength,step_length
+end
+
+#Get gₛ limits (gₛ value causing hydraulic failure)
+function SDM2_get_gₛ_lim!(daylength::Real,model::CCPHStruct,photo_kinetic::PhotoKineticRates,envfun::EnvironmentFunStruct;P_crit::Real=0.12)
+    t₁,t₂,Δt₁,Δt₂ = SDM2_get_time_points(daylength)
+    
+    CCPH.Init_weather_par!(t₁,model,photo_kinetic,envfun)
+    gₛ₁_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_crit,model)
+
+    CCPH.Init_weather_par!(t₂,model,photo_kinetic,envfun)
+    gₛ₂_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_crit,model)
+
+    return gₛ₁_lim_hi,gₛ₂_lim_hi
 end

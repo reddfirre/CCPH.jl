@@ -47,7 +47,8 @@ function calc_K_cost(gₛ::S,
     H::T,
     hydPar::HydraulicsPar,
     env::EnvironmentStruct,
-    cons::Constants) where {T<:Real,S<:Real}
+    cons::Constants;
+    P_crit::Real=0.12) where {T<:Real,S<:Real}
 
     ψ₅₀,b,Kₓₗ₀,g,ρ_H2O,ψₛ = hydPar.ψ₅₀,hydPar.b,hydPar.Kₓₗ₀,cons.g,cons.ρ_H2O,env.ψₛ
     
@@ -59,20 +60,22 @@ function calc_K_cost(gₛ::S,
 
     #Calculate canopy conductance    
     try      
-        K_cost = fixpoint(x->Ptarget(x,Kₓₗ₀,E,ψₛ_g,ψ₅₀,b),1.0)
-        Kₓₗ = Kₓₗ₀*K_cost
+        P = fixpoint(x->Ptarget(x,Kₓₗ₀,E,ψₛ_g,ψ₅₀,b),1.0)
+        K_crit = Kₓₗ₀*P_crit
+        Kₓₗ = Kₓₗ₀*P
+        K_cost = (Kₓₗ-K_crit)/(Kₓₗ₀-K_crit)
         ψ_c = ψₛ_g-E/Kₓₗ 
         return K_cost, Kₓₗ, ψ_c     
     catch
         error("K_cost failed: gₛ=$(gₛ), E=$(E), Kₓₗ₀=$(Kₓₗ₀), ψₛ_g =$(ψₛ_g)")
     end      
 end
-function calc_K_cost(gₛ::T,model::CCPHStruct) where {T<:Real}
+function calc_K_cost(gₛ::T,model::CCPHStruct;P_crit::Real=0.12) where {T<:Real}
     
     #Calculate tree height
     H = model.treesize.H
 
-    K_cost, Kₓₗ, ψ_c = calc_K_cost(gₛ,H,model.hydPar,model.env,model.cons) 
+    K_cost, Kₓₗ, ψ_c = calc_K_cost(gₛ,H,model.hydPar,model.env,model.cons;P_crit=P_crit) 
 
     return K_cost, Kₓₗ, ψ_c     
 end
