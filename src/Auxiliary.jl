@@ -1,6 +1,6 @@
 #Bisection method for finding one root to f in the interval [a,b]
 function bisection(f::Function, a::AbstractFloat, b::AbstractFloat;
-    tol::AbstractFloat=1e-5, maxiter::Integer=200)
+    tol::AbstractFloat=1e-4, maxiter::Integer=200)
     fa = f(a)
     fa*f(b) <= 0 || error("No real root in [a,b]")
     i = 0

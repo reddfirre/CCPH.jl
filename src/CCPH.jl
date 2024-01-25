@@ -1,6 +1,6 @@
 module CCPH
 #Import packages
-import Dates, Optim, SpecialFunctions, ForwardDiff, BlackBoxOptim
+import Dates, Optim, SpecialFunctions, ForwardDiff, BlackBoxOptim, Roots
 
 export Constants, EnvironmentStruct, PhotoKineticRates, EnvironmentFunStruct,
 PhotoPar, PhotoPar!, TreeSize, TreePar, HydraulicsPar, CCPHStruct, CCPHOutput,

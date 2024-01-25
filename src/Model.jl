@@ -135,25 +135,56 @@ function CCPHOpt(daylength::Real,photo_kinetic::PhotoKineticRates,envfun::Enviro
     lower = [gₛ₁_lim_lo, gₛ₂_lim_lo, Nₘ_f_lim_lo]   
     upper = [gₛ₁_lim_hi, gₛ₂_lim_hi, Nₘ_f_lim_hi] 
     
-    res = BlackBoxOptim.bboptimize(x->Objective_fun(x,daylength,photo_kinetic,envfun,model;P_crit=P_crit); SearchRange =[(gₛ₁_lim_lo,gₛ₁_lim_hi),(gₛ₂_lim_lo,gₛ₂_lim_hi),(Nₘ_f_lim_lo,Nₘ_f_lim_hi)])
-    gₛ₁_opt,gₛ₂_opt,Nₘ_f_opt = BlackBoxOptim.best_candidate(res)
-
     #=
+    res = BlackBoxOptim.bboptimize(x->Objective_fun(x,daylength,photo_kinetic,envfun,model;P_crit=P_crit); SearchRange =[(gₛ₁_lim_lo,gₛ₁_lim_hi),(gₛ₂_lim_lo,gₛ₂_lim_hi),(Nₘ_f_lim_lo,Nₘ_f_lim_hi)],TraceMode=:silent)
+    gₛ₁_opt,gₛ₂_opt,Nₘ_f_opt = BlackBoxOptim.best_candidate(res)
+    =#
+    
+    
     #Old optimization routine (Problem with autodiff = :forward)
-    df = Optim.OnceDifferentiable(x->Objective_fun(x,daylength,photo_kinetic,envfun,model),x0;autodiff = :forward)   
+
+    df = Optim.OnceDifferentiable(x->Objective_fun(x,daylength,photo_kinetic,envfun,model;P_crit=P_crit),x0)#;autodiff = :forward)   
     
     inner_optimizer = Optim.BFGS(linesearch = Optim.LineSearches.BackTracking())
     opt_trait = Optim.optimize(df, lower, upper, x0, Optim.Fminbox(inner_optimizer))
   
     Optim.converged(opt_trait)||error("No optimal traits could be found") 
-      
-    
+       
     gₛ₁_opt = opt_trait.minimizer[1]
     gₛ₂_opt = opt_trait.minimizer[2]
-    Nₘ_f_opt = opt_trait.minimizer[3]    
-    =#
-    
+    Nₘ_f_opt = opt_trait.minimizer[3]  
+            
     return gₛ₁_opt,gₛ₂_opt,Nₘ_f_opt
+end
+
+
+#Find optimal gₛ when Nₘ_f is known
+function CCPHOpt(Nₘ_f::Real,daylength::Real,
+    photo_kinetic::CCPH.PhotoKineticRates,
+    envfun::CCPH.EnvironmentFunStruct,
+    model::CCPH.CCPHStruct;
+    gₛ₁_guess::Real=0.02,gₛ₁_lim_lo::Real=0.001,gₛ₁_lim_hi::Real=0.5,
+    gₛ₂_guess::Real=0.02,gₛ₂_lim_lo::Real=0.001,gₛ₂_lim_hi::Real=0.5,
+    P_crit::Real=0.12)
+    
+    x0 = [gₛ₁_guess, gₛ₂_guess]    
+  
+    lower = [gₛ₁_lim_lo, gₛ₂_lim_lo]   
+    upper = [gₛ₁_lim_hi, gₛ₂_lim_hi] 
+
+    f(x) = CCPH.Objective_fun([x[1],x[2],Nₘ_f],daylength,photo_kinetic,envfun,model;P_crit=P_crit)
+        
+    df = CCPH.Optim.OnceDifferentiable(f,x0)   
+    
+    inner_optimizer = CCPH.Optim.BFGS(linesearch = Optim.LineSearches.BackTracking())
+    opt_trait = CCPH.Optim.optimize(df, lower, upper, x0, CCPH.Optim.Fminbox(inner_optimizer))
+      
+    Optim.converged(opt_trait)||error("No optimal traits could be found") 
+        
+    gₛ₁_opt = opt_trait.minimizer[1]
+    gₛ₂_opt = opt_trait.minimizer[2]
+
+    return gₛ₁_opt,gₛ₂_opt
 end
 
 #initiate photo kinetic and environmental variables at time t (time after sunrise. Time in seconds).
@@ -181,10 +212,10 @@ function SDM2_get_gₛ_lim!(daylength::Real,model::CCPHStruct,photo_kinetic::Pho
     t₁,t₂,Δt₁,Δt₂ = SDM2_get_time_points(daylength)
     
     CCPH.Init_weather_par!(t₁,model,photo_kinetic,envfun)
-    gₛ₁_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_limit,model)
+    gₛ₁_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_crit,model)
 
     CCPH.Init_weather_par!(t₂,model,photo_kinetic,envfun)
-    gₛ₂_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_limit,model)
+    gₛ₂_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_crit,model)
 
     return gₛ₁_lim_hi,gₛ₂_lim_hi
 end
