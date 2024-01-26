@@ -301,6 +301,15 @@ function get_output_week(data::DataFrames.DataFrame)
     gₛ₂_output[1,1] = optval_weekly.gₛ₂
     gₛ₂_output[1,2] = optval_weekly_global.gₛ₂
 
+    Nₘ_f_output[1,1] = optval_weekly.Nₘ_f
+    Nₘ_f_output[1,2] = optval_weekly_global.Nₘ_f
+
+    GPP_output[1,1] = output_weekly.GPP
+    GPP_output[1,2] = output_weekly_global.GPP
+
+    Ec_output[1,1] = output_weekly.Ec
+    Ec_output[1,2] = output_weekly_global.Ec
+
     for i = 1:7
 
         model_day,envfun_day,daylength_day = intitiate_model(data,i,kinetic,cons,treepar,treesize,hydPar)
@@ -320,9 +329,24 @@ function get_output_week(data::DataFrames.DataFrame)
         model_day,
         kinetic,
         envfun_day)
+
+        gₛ₁_output[i+1,1] = optval_day.gₛ₁
+        gₛ₁_output[i+1,2] = optval_day_global.gₛ₁
+    
+        gₛ₂_output[i+1,1] = optval_day.gₛ₂
+        gₛ₂_output[i+1,2] = optval_day_global.gₛ₂
+    
+        Nₘ_f_output[i+1,1] = optval_day.Nₘ_f
+        Nₘ_f_output[i+1,2] = optval_day_global.Nₘ_f
+    
+        GPP_output[i+1,1] = output_day.GPP
+        GPP_output[i+1,2] = output_day_global.GPP
+    
+        Ec_output[i+1,1] = output_day.Ec
+        Ec_output[i+1,2] = output_day_global.Ec
     end
     
-    return nothing
+    return gₛ₁_output,gₛ₂_output,Nₘ_f_output,GPP_output,Ec_output
 end
 
 function compare_output()
