@@ -134,15 +134,8 @@ function CCPHOpt(daylength::Real,photo_kinetic::PhotoKineticRates,envfun::Enviro
   
     lower = [gₛ₁_lim_lo, gₛ₂_lim_lo, Nₘ_f_lim_lo]   
     upper = [gₛ₁_lim_hi, gₛ₂_lim_hi, Nₘ_f_lim_hi] 
-    
-    #=
-    res = BlackBoxOptim.bboptimize(x->Objective_fun(x,daylength,photo_kinetic,envfun,model;P_crit=P_crit); SearchRange =[(gₛ₁_lim_lo,gₛ₁_lim_hi),(gₛ₂_lim_lo,gₛ₂_lim_hi),(Nₘ_f_lim_lo,Nₘ_f_lim_hi)],TraceMode=:silent)
-    gₛ₁_opt,gₛ₂_opt,Nₘ_f_opt = BlackBoxOptim.best_candidate(res)
-    =#
-    
-    
-    #Old optimization routine (Problem with autodiff = :forward)
-
+        
+    #(Problem with autodiff = :forward)
     df = Optim.OnceDifferentiable(x->Objective_fun(x,daylength,photo_kinetic,envfun,model;P_crit=P_crit),x0)#;autodiff = :forward)   
     
     inner_optimizer = Optim.BFGS(linesearch = Optim.LineSearches.BackTracking())
