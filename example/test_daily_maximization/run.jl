@@ -349,18 +349,40 @@ function get_output_week(data::DataFrames.DataFrame)
     return gₛ₁_output,gₛ₂_output,Nₘ_f_output,GPP_output,Ec_output
 end
 
-function compare_output()
-    ctg = repeat(["Category 1", "Category 2"], inner = 5)
-    nam = repeat("G" .* string.(1:5), outer = 2)
+function compare_output(data::DataFrames.DataFrame)
+    
+    gₛ₁_output,gₛ₂_output,Nₘ_f_output,GPP_output,Ec_output = get_output_week(data)
 
-    groupedbar(nam, rand(5, 2), group = ctg, xlabel = "Groups", ylabel = "Scores",
-    title = "Scores by group and category", bar_width = 0.67,
-    lw = 0, framestyle = :box)
+    ctg = repeat(["BFGS", "Global"], inner = 8)
+    nam = repeat(["W", "D1", "D2", "D3", "D4", "D5", "D6", "D7"], outer = 2)
+    
+    ctg_Er = repeat(["Error"], inner = 8)
+    nam_Er = ["W", "D1", "D2", "D3", "D4", "D5", "D6", "D7"]
+    
+    pl1 = groupedbar(nam,gₛ₁_output,group = ctg,ylabel="gₛ₁",
+    bar_width = 0.67,lw = 0, framestyle = :box,yguidefontsize=8) 
+
+    pl11 = groupedbar(nam_Er,transpose(100*abs.(gₛ₁_output[:,2]-gₛ₁_output[:,1])./gₛ₁_output[:,2]),group = ctg_Er,ylabel="Abs. Rel. Error % gₛ₁",
+    bar_width = 0.67,lw = 0, framestyle = :box,legends=false,yguidefontsize=8)
+
+    pl2 = groupedbar(nam,gₛ₂_output,group = ctg,ylabel="gₛ₂",
+    bar_width = 0.67,lw = 0, framestyle = :box,yguidefontsize=8)
+
+    pl22 = groupedbar(nam_Er,transpose(100*abs.(gₛ₂_output[:,2]-gₛ₂_output[:,1])./gₛ₂_output[:,2]),group = ctg_Er,ylabel="Abs. Rel. Error % gₛ₂",
+    bar_width = 0.67,lw = 0, framestyle = :box,legends=false,yguidefontsize=8)
+
+    pl3 = groupedbar(nam,Nₘ_f_output,group = ctg,ylabel="Nₘ_f",
+    bar_width = 0.67,lw = 0, framestyle = :box,yguidefontsize=8)
+
+    pl33 = groupedbar(nam_Er,transpose(100*abs.(Nₘ_f_output[:,2]-Nₘ_f_output[:,1])./Nₘ_f_output[:,2]),group = ctg_Er,ylabel="Abs. Rel. Error % Nₘ_f",
+    bar_width = 0.67,lw = 0, framestyle = :box,legends=false,yguidefontsize=8)   
+
+    plot(pl1,pl11,pl2,pl22,pl3,pl33,layout=(3,2))
 end
 
 #Test global optimizer vs gradient-based optimizer
-function run()   
-    #= 
+function run_time_test()   
+    #Check run-time
     for i = 1:4
         println("--Test week $(i)--")
         #Load data
@@ -369,7 +391,15 @@ function run()
         BenchmarkTools.@btime run_week($data)    
         BenchmarkTools.@btime run_week_global($data)  
     end
-    =#    
+end  
+
+function opt_val_test()
+    week_idx = 4
+    #Load data    
+    data = CSV.read("Test_Week_$(week_idx)_Data.csv", DataFrame)
+    #Display optimal values (BFGS vs Global Opt)
+    compare_output(data::DataFrames.DataFrame)
 end
 
-run()
+#run_time_test()
+opt_val_test()
