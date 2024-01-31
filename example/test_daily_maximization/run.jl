@@ -7,35 +7,7 @@ mutable struct OptVal
     Nₘ_f::Real
 end
 
-mutable struct DataStruct
-    date::CCPH.Dates.Date #Date yyyy-mm-dd
-    lat::Real #Latitude in degrees
-    Tmean::Real #°C
-    Tmin::Real #°C
-    Tmax::Real #°C
-    VP::Real #Pa
-    Radₜₒ::Real #J m⁻²
-    θₛ::Real #-
-    Cₐ::Real #Pa
-    P::Real #Pa
-end
-function DataStruct(data::DataFrames.DataFrame,data_idx::Integer;lat::Real=64,Cₐ::Real=400.0/10.0,P::Real=1.0*10^5)
-    #d = CCPH.Dates.Date(data.Date[data_idx], "dd/mm/yyyy")
-    d = data.Date[data_idx]
-    data_day = DataStruct(d,
-    lat,
-    data.airTmean[data_idx],
-    data.airTmin[data_idx],
-    data.airTmax[data_idx]
-    ,data.VP[data_idx],
-    data.Radiation[data_idx]*10^6,
-    data.SWC[data_idx],
-    Cₐ,
-    P)
-    return data_day
-end
-
-function get_env_from_data(data::DataStruct)
+function get_env_from_data(data::WeatherDataStruct)
     day_nr = CCPH.Dates.dayofyear(data.date)
     daylength = CCPH.daylighthour(data.lat*pi/180,day_nr)*3600 #Seconds
     I₀ₜₒₜ = data.Radₜₒ*2.3*10^-6 #mol m⁻²    
@@ -62,7 +34,7 @@ function get_env_from_data(data::DataStruct)
     return env,envfun,daylength
 end
 
-function get_env_from_data(data_vec::Vector{DataStruct})
+function get_env_from_data(data_vec::Vector{WeatherDataStruct})
     day_nrs = [CCPH.Dates.dayofyear(data.date) for data in data_vec]
     lats = [data.lat for data in data_vec]
     daylengths = CCPH.daylighthour.(lats*pi/180,day_nrs)*3600 #Seconds

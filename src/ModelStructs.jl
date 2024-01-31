@@ -217,3 +217,31 @@ function EnvironmentStruct(weatherts::WeatherTS,ind::Integer)
     Tₐ = weatherts.temp[ind]
     EnvironmentStruct(;I₀=I₀,Tₐ=Tₐ,VPD=VPD,θₛ=θₛ) 
 end
+
+#Data containing weather Input data
+mutable struct WeatherDataStruct
+    date::Dates.Date #Date yyyy-mm-dd
+    lat::Real #Latitude in degrees
+    Tmean::Real #°C
+    Tmin::Real #°C
+    Tmax::Real #°C
+    VP::Real #Pa
+    Radₜₒ::Real #J m⁻²
+    θₛ::Real #-
+    Cₐ::Real #Pa
+    P::Real #Pa
+end
+function WeatherDataStruct(data::DataFrames.DataFrame,data_idx::Integer;lat::Real=64,Cₐ::Real=400.0/10.0,P::Real=1.0*10^5)
+    d = data.Date[data_idx]
+    data_day = DataStruct(d,
+    lat,
+    data.airTmean[data_idx],
+    data.airTmin[data_idx],
+    data.airTmax[data_idx]
+    ,data.VP[data_idx],
+    data.Radiation[data_idx]*10^6,
+    data.SWC[data_idx],
+    Cₐ,
+    P)
+    return data_day
+end
