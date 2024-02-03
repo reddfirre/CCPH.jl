@@ -231,17 +231,3 @@ mutable struct WeatherDataStruct
     Cₐ::Real #Pa
     P::Real #Pa
 end
-function WeatherDataStruct(data::DataFrames.DataFrame,data_idx::Integer;lat::Real=64,Cₐ::Real=400.0/10.0,P::Real=1.0*10^5)
-    d = data.Date[data_idx]
-    data_day = DataStruct(d,
-    lat,
-    data.airTmean[data_idx],
-    data.airTmin[data_idx],
-    data.airTmax[data_idx]
-    ,data.VP[data_idx],
-    data.Radiation[data_idx]*10^6,
-    data.SWC[data_idx],
-    Cₐ,
-    P)
-    return data_day
-end

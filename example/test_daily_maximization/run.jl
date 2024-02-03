@@ -7,7 +7,22 @@ mutable struct OptVal
     Nₘ_f::Real
 end
 
-function get_env_from_data(data::WeatherDataStruct)
+function CCPH.WeatherDataStruct(data::DataFrames.DataFrame,data_idx::Integer;lat::Real=64,Cₐ::Real=400.0/10.0,P::Real=1.0*10^5)
+    d = data.Date[data_idx]
+    data_day = CCPH.WeatherDataStruct(d,
+    lat,
+    data.airTmean[data_idx],
+    data.airTmin[data_idx],
+    data.airTmax[data_idx]
+    ,data.VP[data_idx],
+    data.Radiation[data_idx]*10^6,
+    data.SWC[data_idx],
+    Cₐ,
+    P)
+    return data_day
+end
+
+function get_env_from_data(data::CCPH.WeatherDataStruct)
     day_nr = CCPH.Dates.dayofyear(data.date)
     daylength = CCPH.daylighthour(data.lat*pi/180,day_nr)*3600 #Seconds
     I₀ₜₒₜ = data.Radₜₒ*2.3*10^-6 #mol m⁻²    
@@ -34,7 +49,7 @@ function get_env_from_data(data::WeatherDataStruct)
     return env,envfun,daylength
 end
 
-function get_env_from_data(data_vec::Vector{WeatherDataStruct})
+function get_env_from_data(data_vec::Vector{CCPH.WeatherDataStruct})
     day_nrs = [CCPH.Dates.dayofyear(data.date) for data in data_vec]
     lats = [data.lat for data in data_vec]
     daylengths = CCPH.daylighthour.(lats*pi/180,day_nrs)*3600 #Seconds
@@ -181,7 +196,7 @@ function intitiate_model(data::DataFrames.DataFrame)
     hydPar = HydraulicsPar(Kₓₗ₀=0.00054)
     kinetic = PhotoKineticRates()
 
-    data_week= DataStruct.(Ref(data),1:7)
+    data_week= CCPH.WeatherDataStruct.(Ref(data),1:7)
 
     env,envfun,daylength = get_env_from_data(data_week)    
     photo = PhotoPar(kinetic,env.Tₐ)
@@ -198,7 +213,7 @@ function intitiate_model(data::DataFrames.DataFrame,
     treesize::TreeSize,
     hydPar::HydraulicsPar)
 
-    data_day = DataStruct(data,i)
+    data_day = CCPH.WeatherDataStruct(data,i)
     env_day,envfun_day,daylength_day = get_env_from_data(data_day)    
     photo_day = PhotoPar(kinetic,env_day.Tₐ)
     model_day = CCPHStruct(cons,env_day,treepar,treesize,photo_day,hydPar)
@@ -373,5 +388,5 @@ function opt_val_test()
     compare_output(data::DataFrames.DataFrame)
 end
 
-#run_time_test()
+run_time_test()
 opt_val_test()
