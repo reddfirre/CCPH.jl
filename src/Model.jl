@@ -29,7 +29,7 @@ function SDM2_get_time_points(daylength::Real)
     t₁ = daylength*asin(2/π)/(2*π)
     t₂ = daylength/4+t₁
     Δt₁ = t₁*2
-    Δt₂ = t₂*2
+    Δt₂ = daylength/2-Δt₁
     return t₁,t₂,Δt₁,Δt₂
 end
 
