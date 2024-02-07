@@ -13,9 +13,9 @@ function CCPH.WeatherDataStruct(data::DataFrames.DataFrame,data_idx::Integer;lat
     data.airTmean[data_idx],
     data.airTmin[data_idx],
     data.airTmax[data_idx]
-    ,data.VP[data_idx],
+    ,data.VP[data_idx]*100,
     data.Radiation[data_idx]*10^6,
-    data.SWC[data_idx],
+    data.SWC[data_idx]/100,
     Cₐ,
     P)
     return data_day
@@ -182,8 +182,8 @@ function get_model_output(Nₘ_f_opt::Real,
     model;
     gₛ₁_lim_hi=gₛ₁_lim_hi,
     gₛ₂_lim_hi=gₛ₂_lim_hi,
-    gₛ₁_guess=gₛ₁_guess,
-    gₛ₂_guess=gₛ₂_guess)    
+    gₛ₁_guess=min(gₛ₁_guess,0.9*gₛ₁_lim_hi),
+    gₛ₂_guess=min(gₛ₂_guess,0.9*gₛ₂_lim_hi))    
     optval = OptVal(gₛ₁_opt,gₛ₂_opt,Nₘ_f_opt)
     output = CCPH.CCPH_run!(gₛ₁_opt,gₛ₂_opt,Nₘ_f_opt,daylength,kinetic,envfun,model)
     return optval,output
@@ -209,9 +209,29 @@ function intitiate_model(data_week::CCPH.WeatherDataStruct,Xₜ::Real)
     return model,envfun,daylength,kinetic,cons,treepar,treesize,hydPar
 end
 
-#=
+function intitiate_model(data_week::Vector{CCPH.WeatherDataStruct},Xₜ::Vector{T}) where {T<:Real}
+    #Stand size data
+    H = 19.07 #m
+    N = 850.0/10000 # #tree/m²
+    LAI = 2.45 #-
+
+    #Create structs
+    cons = Constants()   
+    treepar = TreePar(Xₜ=mean(Xₜ),Nₛ=0.013,α_max=0.14,a_Jmax=0.011,b_Jmax=0.0)
+    treesize = TreeSize(H,LAI,N)
+    hydPar = HydraulicsPar(Kₓₗ₀=0.00054)
+    kinetic = PhotoKineticRates()    
+
+    env,envfun,daylength = get_env_from_data(data_week)    
+    photo = PhotoPar(kinetic,env.Tₐ)
+    model = CCPHStruct(cons,env,treepar,treesize,photo,hydPar)
+
+    return model,envfun,daylength,kinetic,cons,treepar,treesize,hydPar
+end
+
+
 function intitiate_model(data_week::Vector{CCPH.WeatherDataStruct},
-    Xₜ::Vector{T},
+    Xₜ_week::Vector{T},
     i::Integer,
     kinetic::CCPH.PhotoKineticRates,
     cons::CCPH.Constants,
@@ -219,29 +239,50 @@ function intitiate_model(data_week::Vector{CCPH.WeatherDataStruct},
     treesize::TreeSize,
     hydPar::HydraulicsPar) where {T<:Real}
 
-    data_day = data_week[i]    
+    data_day = data_week[i] 
+    Xₜ = Xₜ_week[i] 
     env_day,envfun_day,daylength_day = get_env_from_data(data_day)    
     photo_day = PhotoPar(kinetic,env_day.Tₐ)
+    treepar.Xₜ = Xₜ
     model_day = CCPHStruct(cons,env_day,treepar,treesize,photo_day,hydPar)
 
     return model_day,envfun_day,daylength_day
 end
-=#
 
-function run_week_mean(data::CCPH.WeatherDataStruct,Xₜ::Real)
+
+function run_week(data::Vector{CCPH.WeatherDataStruct},Xₜ::Vector{T}) where {T<:Real}
     
     model,envfun,daylength,kinetic,cons,treepar,treesize,hydPar = intitiate_model(data,Xₜ)
 
     #Optimize weekly mean using BFGS
     optval_weekly,output_weekly = get_model_output(daylength,model,kinetic,envfun)
     
-   
-    return (optval_weekly,output_weekly)
+    optval_day_vec = Vector{OptVal}(undef,7)
+    output_day_vec = Vector{CCPH.CCPHOutput}(undef,7)
+    
+    for i = 1:7
+
+        model_day,envfun_day,daylength_day = intitiate_model(data,Xₜ,i,kinetic,cons,treepar,treesize,hydPar)
+        
+        #Optimize daily using BFGS
+        optval_day,output_day = get_model_output(optval_weekly.Nₘ_f,
+        optval_weekly.gₛ₁,
+        optval_weekly.gₛ₂,
+        daylength_day,
+        model_day,
+        kinetic,
+        envfun_day)        
+        
+        optval_day_vec[i] = optval_day
+        output_day_vec[i] = output_day
+    end
+    
+    return optval_weekly,output_weekly,optval_day_vec,output_day_vec
 end
 
 function Load_RO_weather_data(year::Integer;stand_type::Symbol=:Fertilized)
-    SWC_data = CSV.read("./Data/RO_data/Daily_SWC_data_$(year).csv", DataFrames.DataFrame)
-    Weather_data = CSV.read("./Data/RO_data/Weather_data_$(year).csv", DataFrames.DataFrame)
+    SWC_data = CSV.read("./Daily_SWC_data_$(year).csv", DataFrames.DataFrame)
+    Weather_data = CSV.read("./Weather_data_$(year).csv", DataFrames.DataFrame)
 
     if stand_type==:Fertilized
         Weather_data[!,:SWC] = SWC_data.SWRos2         
@@ -257,7 +298,7 @@ function Load_RO_weather_data(year::Integer;stand_type::Symbol=:Fertilized)
     return raw_data
 end 
 function get_GPP_data(year::Integer;stand_type::Symbol=:Fertilized)
-    GPP_data = CSV.read("./Data/RO_data/GPP_data_$(year).csv", DataFrames.DataFrame)
+    GPP_data = CSV.read("./GPP_data_$(year).csv", DataFrames.DataFrame)
  
      if stand_type==:Fertilized
          return GPP_data.GPP_RO2       
@@ -268,21 +309,109 @@ function get_GPP_data(year::Integer;stand_type::Symbol=:Fertilized)
      end
  end
 
- function run()
+ function old_obj_fun(x,model::CCPH.CCPHStruct)
+    gₛ,Nₘ_f = x
+    output = CCPH.CCPH_inst_run(gₛ,Nₘ_f,model)
+    return -output.Gain
+end
+
+function run_week_old(data::Vector{CCPH.WeatherDataStruct},Xₜ::Vector{T}) where {T<:Real}    
+    model,envfun,daylength,kinetic,cons,treepar,treesize,hydPar = intitiate_model(data,Xₜ)
+
+    gₛ_lim_hi = CCPH.calc_K_costᵢₙᵥ(0.12,model)
+    x0 = [0.02, 0.012]
+    lower = [0.001, 0.001]   
+    upper = [gₛ_lim_hi, 0.05] 
+
+    df = CCPH.Optim.OnceDifferentiable(x->old_obj_fun(x,model),x0)   
+
+    inner_optimizer = CCPH.Optim.BFGS(linesearch = CCPH.Optim.LineSearches.BackTracking())
+    opt_trait = CCPH.Optim.optimize(df, lower, upper, x0, CCPH.Optim.Fminbox(inner_optimizer))
+
+    CCPH.Optim.converged(opt_trait)||error("No optimal traits could be found") 
+
+    gₛ_opt = opt_trait.minimizer[1]
+    Nₘ_f_opt = opt_trait.minimizer[2]
+
+    #Output from old model
+    output = CCPH.CCPH_inst_run(gₛ_opt,Nₘ_f_opt,model)
+    Ec = output.Ec*daylength
+    Ec *= 1000*model.cons.M_H2O/model.cons.ρ_H2O
+    
+    GPP = output.GPP*daylength
+    GPP *= model.cons.M_C*1000
+    
+    return GPP,Ec
+end
+
+ function run()    
     input_raw = Load_RO_weather_data(2015;stand_type=:Fertilized)
     GPP_raw = get_GPP_data(2015;stand_type=:Fertilized)
+    Ec_raw = calc_Ec_data(input_raw)    
     Xₜ_raw =  Xₜ_fun(input_raw;Smin=-4.0,ΔS=17.82,τ=14.6)
+    ζ = 1.19
 
     input_growth = input_raw[125:271]
     GPP_growth = GPP_raw[125:271]
-    Xₜ_growth = Xₜ_raw[125:271]
+    Ec_growth = Ec_raw[125:271]
+    Xₜ_growth = Xₜ_raw[125:271]    
     
-    #147
+   
     GPP_model = Real[]
+    Ec_model = Real[]
+    GPP_old_model = Real[]
+    Ec_old_model = Real[]
+
     for i = 1:7:147
-        Xₜ = mean(Xₜ_growth[i:i+6])
+        Xₜ =Xₜ_growth[i:i+6]
+        input_week = input_growth[i:i+6]        
+
+        optval_weekly,output_weekly,optval_day_vec,output_day_vec = run_week(input_week,Xₜ)
         
+        push!(GPP_model,output_day_vec[1].GPP,
+        output_day_vec[1].GPP,
+        output_day_vec[2].GPP,
+        output_day_vec[3].GPP,
+        output_day_vec[4].GPP,
+        output_day_vec[5].GPP,
+        output_day_vec[6].GPP)
+
+        push!(Ec_model,output_day_vec[1].Ec,
+        output_day_vec[2].Ec,
+        output_day_vec[3].Ec,
+        output_day_vec[4].Ec,
+        output_day_vec[5].Ec,
+        output_day_vec[6].Ec,
+        output_day_vec[7].Ec)
+
+        GPP,Ec = run_week_old(input_week,Xₜ)
+
+        push!(GPP_old_model,GPP,
+        GPP,
+        GPP,
+        GPP,
+        GPP,
+        GPP,
+        GPP)
+
+        push!(Ec_old_model,Ec,
+        Ec,
+        Ec,
+        Ec,
+        Ec,
+        Ec,
+        Ec)
     end
+
+    plot([day.date for day in input_growth],GPP_growth,linecolor=:blue,label="Data",xlabel="Date",ylabel="GPP")
+    plot!([day.date for day in input_growth],GPP_model*ζ,linecolor=:Green,label="New Model")
+    pl1 = plot!([day.date for day in input_growth],GPP_old_model*ζ,linecolor=:red,label="Old Model")
+
+    plot([day.date for day in input_growth],Ec_growth,linecolor=:blue,xlabel="Date",ylabel="Ec")
+    plot!([day.date for day in input_growth],Ec_model,linecolor=:Green)
+    pl2 = plot!([day.date for day in input_growth],Ec_old_model,linecolor=:red,legends=false)
+
+    plot(pl1,pl2,layout=(2,1))
  end
 
  run()
