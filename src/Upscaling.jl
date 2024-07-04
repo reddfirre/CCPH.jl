@@ -1,1 +1,1 @@
-calc_scaling_fac(model::CCPHStruct) = (1-exp(-model.treepar.k*model.treesize.LAI))/model.treepar.k
+calc_scaling_fac(model::CCPHStruct) = (1-exp(-model.treepar.k*model.treesize.LAI))/model.treepar.k #Scaling factor from leaf-level to canopy-level

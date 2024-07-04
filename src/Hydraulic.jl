@@ -8,7 +8,8 @@ Pfunᵢₙᵥ(Pval::T,ψ₅₀::T,b::T) where {T<:Float64} = ψ₅₀*(log(Pval)
 Pintlim(ψ::S,ψ₅₀::T,b::T) where {S<:Real,T<:Float64} = CCPH.Pfun(ψ,ψ₅₀,b)*ψ+
 abs(ψ₅₀)/log(2)^(1/b)*SpecialFunctions.gamma((1+b)/b,log(2)*(ψ/ψ₅₀)^b)
 
-#The integral of Pfun from the pre-dawn canopy water potential ψ_cm to the canopy water potential ψ_c 
+#Approximation of the integral of Pfun from the pre-dawn canopy water potential ψ_cm to the canopy water potential ψ_c 
+#Using Simpson's 1/3 rule
 #Pint(ψ_c::S,ψ_cm::T,ψ₅₀::T,b::T) where {S<:Real,T<:Float64} = Pintlim(ψ_cm,ψ₅₀,b)-Pintlim(ψ_c,ψ₅₀,b)
 function Pint(ψ_c::S,ψ_cm::T,ψ₅₀::T,b::T)  where {S<:Real,T<:Real}
     ψ = (ψ_c+ψ_cm)/2

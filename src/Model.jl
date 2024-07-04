@@ -1,4 +1,4 @@
-#Function for calculating Jₘₐₓ at optimal (Jₘₐₓₒₚₜ) temperature from Nitrogen per leaf mass (Nₘ_f)
+#Function for calculating Jₘₐₓ at optimal temperature (Jₘₐₓₒₚₜ) from Nitrogen per leaf mass (Nₘ_f)
 function calc_Jₘₐₓ(Nₘ_f::S,a::T,b::T) where {S<:Real,T<:Float64}     
     return max(a*Nₘ_f+b,0.0)
 end
@@ -33,7 +33,7 @@ function SDM2_get_time_points(daylength::Real)
     return t₁,t₂,Δt₁,Δt₂
 end
 
-#Calculate instantaneous reward
+#Calculate instantaneous reward (leaf-level)
 function calc_gain(A::S,
     Jₘₐₓ::S,
     N_cost::T,
@@ -111,6 +111,7 @@ function CCPH_run!(gₛ₁::S,
     return modeloutput
 end   
 
+#Leaf-level performance measure
 function Objective_fun(x::S,
     daylength::T,
     photo_kinetic::PhotoKineticRates,
@@ -200,7 +201,7 @@ function Init_weather_par!(i::Integer,model::CCPHStruct,weatherts::WeatherTS,pho
     return growthlength,step_length
 end
 
-#Get gₛ limits (gₛ value causing hydraulic failure)
+#Get gₛ limits (greater gₛ values will causing hydraulic failure)
 function SDM2_get_gₛ_lim!(daylength::Real,model::CCPHStruct,photo_kinetic::PhotoKineticRates,envfun::EnvironmentFunStruct;P_crit::Real=0.12)
     t₁,t₂,Δt₁,Δt₂ = SDM2_get_time_points(daylength)
     

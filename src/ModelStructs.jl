@@ -1,4 +1,4 @@
-#Structs used for Forest-Photosynthesis-Hydraulic model 
+#Structs used for Coupled Canopy Photosynthesis and Hydraulics model
 
 #Constants
 mutable struct Constants{T<:Float64}

@@ -45,13 +45,7 @@ end
 #Calculate instantaneous above ground vegetation GPP (mol C m⁻² ground area s⁻¹) 
 function calc_GPP(A::Real,model::CCPHStruct)
     #A leaf C assimilation (mol C m⁻² leaf area s⁻¹)
-    scaling_fac = calc_scaling_fac(model)
+    scaling_fac = calc_scaling_fac(model) #Scaling factor from leaf-level to canopy-level
     GPP = A*scaling_fac
     return GPP
 end
-
-#=
-#Calculate per tree canopy gross primary production (kg C year⁻¹ tree⁻¹)
-GPP(A::S,LAI::T,growthlength::T,model::CCPHStruct) where {S<:Real,T<:Real} = 
-model.cons.M_C*A*growthlength*(1-exp(-model.treepar.k*LAI))/(model.treesize.N*model.treepar.k)
-=#
