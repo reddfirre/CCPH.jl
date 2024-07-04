@@ -1,32 +1,39 @@
-#Function for calculating Jₘₐₓ at optimal (Jₘₐₓₒₚₜ) temperature from Nitrogen per leaf mass (Nₘ_f)
-function Calc_Jₘₐₓ(Nₘ_f::S,a::T,b::T) where {S<:Real,T<:Float64}     
+#Function for calculating Jₘₐₓ at optimal temperature (Jₘₐₓₒₚₜ) from Nitrogen per leaf mass (Nₘ_f)
+function calc_Jₘₐₓ(Nₘ_f::S,a::T,b::T) where {S<:Real,T<:Float64}     
     return max(a*Nₘ_f+b,0.0)
 end
 #Function for calcualting the seasonal peak Jₘₐₓ from Nitrogen per leaf mass (Nₘ_f)
-function Calc_Jₘₐₓ(Nₘ_f::S,a::T,b::T,b_Jₘₐₓ::T) where {S<:Real,T<:Float64}     
-    return b_Jₘₐₓ*Calc_Jₘₐₓ(Nₘ_f,a,b)
+function calc_Jₘₐₓ(Nₘ_f::S,a::T,b::T,b_Jₘₐₓ::T) where {S<:Real,T<:Float64}     
+    return b_Jₘₐₓ*calc_Jₘₐₓ(Nₘ_f,a,b)
 end
 #Function for calcualting Jₘₐₓ from Nitrogen per leaf mass (Nₘ_f)
-function Calc_Jₘₐₓ(Nₘ_f::S,a::T,b::T,b_Jₘₐₓ::T,xₜ::T) where {S<:Real,T<:Float64}     
-    return xₜ*Calc_Jₘₐₓ(Nₘ_f,a,b,b_Jₘₐₓ) 
+function calc_Jₘₐₓ(Nₘ_f::S,a::T,b::T,b_Jₘₐₓ::T,xₜ::T) where {S<:Real,T<:Float64}     
+    return xₜ*calc_Jₘₐₓ(Nₘ_f,a,b,b_Jₘₐₓ) 
 end
 
 #Function for calculating the quantum yield from Jmax
-function Calc_α(xₜ::T,α_max::T) where {T<:Float64} 
+function calc_α(xₜ::T,α_max::T) where {T<:Float64} 
     return xₜ*α_max
 end
 
-Calc_LAI(model::CCPHStruct) = model.treesize.Wf/model.treepar.LMA*model.treesize.N
-
 #Calculate the irradiance incident on a leaf at irradiance I
-Calc_Iᵢ(I::Float64,model::CCPHStruct) = I*model.treepar.k/(1-model.treepar.m)
-Calc_Iᵢ(I::Float64,treepar::TreePar) = I*treepar.k/(1-treepar.m)
+calc_Iᵢ(I::Float64,model::CCPHStruct) = I*model.treepar.k/(1-model.treepar.m)
+calc_Iᵢ(I::Float64,treepar::TreePar) = I*treepar.k/(1-treepar.m)
 
 #calcualte total conductance
-Calc_gₜ(gₛ::Real,model::CCPHStruct) = gₛ*model.treepar.r_gₛ
-Calc_gₜ(gₛ::Real,treepar::TreePar) = gₛ*treepar.r_gₛ
+calc_gₜ(gₛ::Real,model::CCPHStruct) = gₛ*model.treepar.r_gₛ
+calc_gₜ(gₛ::Real,treepar::TreePar) = gₛ*treepar.r_gₛ
 
-#Calculate trait optimization objective function
+#Calcualte time points and time intervals to compute a SDM-2 integral approxiation (Wang et al. 2014) 
+function SDM2_get_time_points(daylength::Real)
+    t₁ = daylength*asin(2/π)/(2*π)
+    t₂ = daylength/4+t₁
+    Δt₁ = t₁*2
+    Δt₂ = daylength/2-Δt₁
+    return t₁,t₂,Δt₁,Δt₂
+end
+
+#Calculate instantaneous reward (leaf-level)
 function calc_gain(A::S,
     Jₘₐₓ::S,
     N_cost::T,
@@ -35,72 +42,151 @@ function calc_gain(A::S,
     return gain
 end
 
-#Run the Coupled Canopy Photosynthesis and Hydraulics model
-function CCPH_run(gₛ::S,Nₘ_f::S,growthlength::T,model::CCPHStruct) where {S<:Real,T<:Float64}    
+#Run the instantaneous Coupled Canopy Photosynthesis and Hydraulics model
+function CCPH_inst_run(gₛ::S,Nₘ_f::S,model::CCPHStruct;P_crit::Real=0.12) where {S<:Real}    
     
     #Calculate Jₘₐₓ
-    Jₘₐₓ = Calc_Jₘₐₓ(Nₘ_f,model.treepar.a_Jmax,model.treepar.b_Jmax,model.photopar.b_Jmax,model.treepar.Xₜ)    
+    Jₘₐₓ = calc_Jₘₐₓ(Nₘ_f,model.treepar.a_Jmax,model.treepar.b_Jmax,model.photopar.b_Jmax,model.treepar.Xₜ)    
     #Quantum yield
-    model.photopar.α = Calc_α(model.treepar.Xₜ,model.treepar.α_max)
+    model.photopar.α = calc_α(model.treepar.Xₜ,model.treepar.α_max)
     #Irradiance incident on a leaf at canopy top
-    Iᵢ = Calc_Iᵢ(model.env.I₀,model)
-    #Calculate LAI 
-    LAI = Calc_LAI(model)
+    Iᵢ = calc_Iᵢ(model.env.I₀,model)    
     #calcualte total conductance
-    gₜ = Calc_gₜ(gₛ,model)
+    gₜ = calc_gₜ(gₛ,model)
     #calculate electron transport
-    J = Calc_J(Iᵢ,Jₘₐₓ,model.photopar.α,model.photopar.θ)
+    J = calc_J(Iᵢ,Jₘₐₓ,model.photopar.α,model.photopar.θ)
     #Calcualte intercellular carbon dioxide concentration
     cᵢ = calc_opt_cᵢ(gₜ,J,model.photopar,model.env)    
     #Calculate leaf C assimilation
     A = calc_Assimilation(gₜ,cᵢ,model.env.P,model.env.Cₐ)
     #Calculate leaf transpiration
-    E = calc_E(gₛ,model.env.VPD,model.env.P;cons=model.cons)
-    #Calculate per tree carbon assimilation
-    P = GPP(A,LAI,growthlength,model)
+    E = calc_E(gₛ,model.env.VPD,model.env.P;cons=model.cons)    
     #Calculate cost factor of hydraulic failure
-    E_cost, Kₓₗ, ψ_c = Calc_K_cost(gₛ,model)
+    E_cost, Kₓₗ, ψ_c = calc_K_cost(gₛ,model;P_crit=P_crit)
     #Carbon cost of nitrogen uptake and protein maintenance 
     N_cost = model.treepar.Nₛ
     #Calculate trait optimization objective function
     gain = calc_gain(A,Jₘₐₓ,N_cost,E_cost)
-    αr = zero(eltype(P))
-    modeloutput = CCPHOutput(P,αr,ψ_c,Kₓₗ,E_cost,gain,cᵢ,A,E)
+    #Calculate canopy transpiration 
+    Ec = calc_Ec(E,model)
+    #Calculate above ground vegetation GPP
+    GPP = calc_GPP(A,model)
+    
+    modelinstoutput = CCPHInstOutput(ψ_c,Kₓₗ,E_cost,gain,cᵢ,A,E,GPP,Ec)
 
-    return modeloutput
+    return modelinstoutput
 end
 
-function Trait_objective_fun(x::S,growthlength::T,model::CCPHStruct) where {S<:AbstractArray,T<:Float64} 
-    gₛ,Nₘ_f = x    
+#Run the Coupled Canopy Photosynthesis and Hydraulics model to get daily output values
+function CCPH_run!(gₛ₁::S,
+    gₛ₂::S,
+    Nₘ_f::S,
+    daylength::T,
+    photo_kinetic::PhotoKineticRates,
+    envfun::EnvironmentFunStruct,
+    model::CCPHStruct;P_crit::Real=0.12) where {S<:Real,T<:Real}
+    #SDM-2 is used to approximate the time integration from sunrise to sunset (Wang et al. 2014) 
+    
+    t₁,t₂,Δt₁,Δt₂ = SDM2_get_time_points(daylength)   
 
-    modeloutput = CCPH_run(gₛ,Nₘ_f,growthlength,model)
+    Init_weather_par!(t₁,model,photo_kinetic,envfun)
+    modelinstoutput₁ = CCPH_inst_run(gₛ₁,Nₘ_f,model;P_crit=P_crit)
+    
+    Init_weather_par!(t₂,model,photo_kinetic,envfun)
+    modelinstoutput₂ = CCPH_inst_run(gₛ₂,Nₘ_f,model;P_crit=P_crit)
+
+    #Calculate above ground vegetation GPP (mol C m⁻² ground area day⁻¹)
+    GPP = 2*(modelinstoutput₁.GPP*Δt₁+modelinstoutput₂.GPP*Δt₂)
+    GPP *= model.cons.M_C*1000 #(g C m⁻² ground area day⁻¹)
+
+    #Calculate canopy transpiration (mol H₂O m⁻² ground day⁻¹)
+    Ec = 2*(modelinstoutput₁.Ec*Δt₁+modelinstoutput₂.Ec*Δt₂)
+    Ec *= 1000*model.cons.M_H2O/model.cons.ρ_H2O #(mm day⁻¹)   
+
+    #Calculate Leaf performance measure (mol C m⁻² leaf area day⁻¹)
+    Gain = 2*(modelinstoutput₁.Gain*Δt₁+modelinstoutput₂.Gain*Δt₂)
+
+    modeloutput = CCPHOutput(Gain,GPP,Ec)
+
+    return modeloutput
+end   
+
+#Leaf-level performance measure
+function Objective_fun(x::S,
+    daylength::T,
+    photo_kinetic::PhotoKineticRates,
+    envfun::EnvironmentFunStruct,
+    model::CCPHStruct;P_crit::Real=0.12) where {S<:AbstractArray,T<:Real} 
+    gₛ₁,gₛ₂,Nₘ_f = x 
+    
+    modeloutput = CCPH_run!(gₛ₁,gₛ₂,Nₘ_f,daylength,photo_kinetic,envfun,model;P_crit=P_crit)
 
     return -modeloutput.Gain
 end 
 
-#Find optimal triats
-function CCPHTraitmodel(growthlength::T,model::CCPHStruct;
-    gₛ_guess::T=0.02,gₛ_lim_lo::T=0.001,gₛ_lim_hi::T=0.5,
-    Nₘ_f_guess::T=0.012,Nₘ_f_lim_lo::T=0.001,Nₘ_f_lim_hi::T=0.05) where {T<:Float64}  
+#Find optimal gₛ and Nₘ_f
+function CCPHOpt(daylength::Real,photo_kinetic::PhotoKineticRates,envfun::EnvironmentFunStruct,model::CCPHStruct;
+    gₛ₁_guess::Real=0.02,gₛ₁_lim_lo::Real=0.001,gₛ₁_lim_hi::Real=0.5,
+    gₛ₂_guess::Real=0.02,gₛ₂_lim_lo::Real=0.001,gₛ₂_lim_hi::Real=0.5,
+    Nₘ_f_guess::Real=0.012,Nₘ_f_lim_lo::Real=0.001,Nₘ_f_lim_hi::Real=0.05,
+    P_crit::Real=0.12)
     
-    x0 = [gₛ_guess, Nₘ_f_guess]    
+    x0 = [gₛ₁_guess, gₛ₂_guess, Nₘ_f_guess]    
   
-    lower = [gₛ_lim_lo, Nₘ_f_lim_lo]   
-    upper = [min(gₛ_lim_hi,0.5), Nₘ_f_lim_hi] 
-    
-    df = Optim.OnceDifferentiable(x->Trait_objective_fun(x,growthlength,model),x0;autodiff = :forward)   
+    lower = [gₛ₁_lim_lo, gₛ₂_lim_lo, Nₘ_f_lim_lo]   
+    upper = [gₛ₁_lim_hi, gₛ₂_lim_hi, Nₘ_f_lim_hi] 
+        
+    #(Problem with autodiff = :forward)
+    df = Optim.OnceDifferentiable(x->Objective_fun(x,daylength,photo_kinetic,envfun,model;P_crit=P_crit),x0)#;autodiff = :forward)   
     
     inner_optimizer = Optim.BFGS(linesearch = Optim.LineSearches.BackTracking())
     opt_trait = Optim.optimize(df, lower, upper, x0, Optim.Fminbox(inner_optimizer))
   
-    Optim.converged(opt_trait)||error("No optimal traits could be found")    
-    
-    gₛ_opt = opt_trait.minimizer[1]
-    Nₘ_f_opt = opt_trait.minimizer[2]    
-    
-    return gₛ_opt,Nₘ_f_opt
+    Optim.converged(opt_trait)||error("No optimal traits could be found") 
+       
+    gₛ₁_opt = opt_trait.minimizer[1]
+    gₛ₂_opt = opt_trait.minimizer[2]
+    Nₘ_f_opt = opt_trait.minimizer[3]  
+            
+    return gₛ₁_opt,gₛ₂_opt,Nₘ_f_opt
 end
 
+
+#Find optimal gₛ when Nₘ_f is known
+function CCPHOpt(Nₘ_f::Real,daylength::Real,
+    photo_kinetic::CCPH.PhotoKineticRates,
+    envfun::CCPH.EnvironmentFunStruct,
+    model::CCPH.CCPHStruct;
+    gₛ₁_guess::Real=0.02,gₛ₁_lim_lo::Real=0.001,gₛ₁_lim_hi::Real=0.5,
+    gₛ₂_guess::Real=0.02,gₛ₂_lim_lo::Real=0.001,gₛ₂_lim_hi::Real=0.5,
+    P_crit::Real=0.12)
+    
+    x0 = [gₛ₁_guess, gₛ₂_guess]    
+  
+    lower = [gₛ₁_lim_lo, gₛ₂_lim_lo]   
+    upper = [gₛ₁_lim_hi, gₛ₂_lim_hi] 
+
+    f(x) = CCPH.Objective_fun([x[1],x[2],Nₘ_f],daylength,photo_kinetic,envfun,model;P_crit=P_crit)
+        
+    df = CCPH.Optim.OnceDifferentiable(f,x0)   
+    
+    inner_optimizer = CCPH.Optim.BFGS(linesearch = Optim.LineSearches.BackTracking())
+    opt_trait = CCPH.Optim.optimize(df, lower, upper, x0, CCPH.Optim.Fminbox(inner_optimizer))
+      
+    Optim.converged(opt_trait)||error("No optimal traits could be found") 
+        
+    gₛ₁_opt = opt_trait.minimizer[1]
+    gₛ₂_opt = opt_trait.minimizer[2]
+
+    return gₛ₁_opt,gₛ₂_opt
+end
+
+#initiate photo kinetic and environmental variables at time t (time after sunrise. Time in seconds).
+function Init_weather_par!(t::Real,model::CCPHStruct,photo_kinetic::PhotoKineticRates,envfun::EnvironmentFunStruct)
+    EnvironmentStruct!(t,model.env,envfun)
+    PhotoPar!(model.photopar,photo_kinetic,model.env.Tₐ)
+    return nothing
+end
 #initiate weather parameters from WeatherTS
 function Init_weather_par!(i::Integer,model::CCPHStruct,weatherts::WeatherTS,photo_kinetic::PhotoKineticRates) 
     growthlength = weatherts.tot_annual_daylight[i] #Length of day light time during the gorwth period of a specific year (s)
@@ -111,7 +197,19 @@ function Init_weather_par!(i::Integer,model::CCPHStruct,weatherts::WeatherTS,pho
     model.env.Tₐ = weatherts.temp[i]
     PhotoPar!(model.photopar,photo_kinetic,weatherts.temp[i])
     model.treepar.Xₜ = weatherts.acclimation_fac[i] #Account for acclimation 
-    model.treepar.rₘ = model.treepar.rₘ_ref*exp(log(model.treepar.Q₁₀_rₘ)/10*(model.env.Tₐ-model.treepar.T_rₘ_ref)) #Calcualte respiraiton rate at current air temperature
-    
+        
     return growthlength,step_length
+end
+
+#Get gₛ limits (greater gₛ values will causing hydraulic failure)
+function SDM2_get_gₛ_lim!(daylength::Real,model::CCPHStruct,photo_kinetic::PhotoKineticRates,envfun::EnvironmentFunStruct;P_crit::Real=0.12)
+    t₁,t₂,Δt₁,Δt₂ = SDM2_get_time_points(daylength)
+    
+    CCPH.Init_weather_par!(t₁,model,photo_kinetic,envfun)
+    gₛ₁_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_crit,model)
+
+    CCPH.Init_weather_par!(t₂,model,photo_kinetic,envfun)
+    gₛ₂_lim_hi = CCPH.calc_K_costᵢₙᵥ(P_crit,model)
+
+    return gₛ₁_lim_hi,gₛ₂_lim_hi
 end

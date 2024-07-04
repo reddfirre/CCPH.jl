@@ -1,6 +1,6 @@
 #Bisection method for finding one root to f in the interval [a,b]
 function bisection(f::Function, a::AbstractFloat, b::AbstractFloat;
-    tol::AbstractFloat=1e-5, maxiter::Integer=200)
+    tol::AbstractFloat=1e-4, maxiter::Integer=200)
     fa = f(a)
     fa*f(b) <= 0 || error("No real root in [a,b]")
     i = 0
@@ -92,7 +92,9 @@ end
 SVPₜ(T::AbstractFloat) = 610.94*exp(17.625*T/(243.04+T))
 
 #Vapour-pressure deficit (Pa) at T degree celsius and RH relative humidity (%)
-VPDₜ(T::AbstractFloat,RH::AbstractFloat) = SVPₜ(T)*(1-RH/100)
+#VPDₜ(T::AbstractFloat,RH::AbstractFloat) = max(SVPₜ(T)*(1-RH/100),0.0)
+#Vapour-pressure deficit (Pa) at T degree celsius and VP vapor pressure (Pa)
+VPDₜ(T::AbstractFloat,VP::AbstractFloat) = max(SVPₜ(T)-VP,0.0)
 
 #Calcualte day-light hours
 function daylighthour(L::Real,d::Real)
@@ -105,3 +107,13 @@ function daylighthour(L::Real,d::Real)
     Φs = sin(Φ)
     return 24*(1-1/pi*acos(tan(L)*ϵ*Φs/sqrt(1-ϵ^2*Φs^2)))
 end
+
+#Calcualte the above canop above canopy irradiance (PAR mol m⁻² s⁻¹) (eq. 2 Wang et al. 2014)
+#at time t after sunrise (t=0 → sunrise and t=daylength → sunset); Time is given in seconds.
+#daylength, Daylight lenght, for each timestep, given in seconds.
+#I₀ₜₒₜ, daily total irradiance (estimated from daily total solar radiation) (mol s⁻¹ m⁻²).
+I₀_fun(t::Real,I₀ₜₒₜ::Real,daylength::Real) = π*I₀ₜₒₜ*sin(π*t/daylength)/(2*daylength)
+
+#Calcualte ambient temperature, T, at time t after sunrise (t=0 → sunrise and t=daylength → sunset); Time is given in seconds.
+#(eq. 3 Wang et al. 2014) time lag between the time of maximal temperature and solar noon.
+Tₐ_fun(t::Real,T_min::Real,T_max::Real,daylength::Real;a::Real=2*3600) = T_min+(T_max-T_min)*sin(π*t/(daylength+2*a))
