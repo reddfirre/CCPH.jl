@@ -106,7 +106,7 @@ function CCPH_run!(gₛ₁::S,
     #Calculate Leaf performance measure (mol C m⁻² leaf area day⁻¹)
     Gain = 2*(modelinstoutput₁.Gain*Δt₁+modelinstoutput₂.Gain*Δt₂)
 
-    modeloutput = CCPHOutput(Gain,GPP,Ec)
+    modeloutput = CCPHOutput(Gain,GPP,Ec,modelinstoutput₁,modelinstoutput₁)
 
     return modeloutput
 end   

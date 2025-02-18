@@ -196,6 +196,8 @@ mutable struct CCPHOutput{T<:Real}
     Gain::T #Leaf performance measure (mol C m⁻² leaf area day⁻¹)
     GPP::T #Above ground vegetation GPP (g C m⁻² ground day⁻¹)
     Ec::T #Canopy transpiration (mm day⁻¹)
+    modelinstoutput₁::CCPHInstOutput{T} #Instantaneous model output corresponding to time point t₁ (SDM2)
+    modelinstoutput₂::CCPHInstOutput{T} #Instantaneous model output corresponding to time point t₂ (SDM2)
 end
 
 #Containter for weather related time series
